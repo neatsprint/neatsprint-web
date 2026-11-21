@@ -7,6 +7,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   type LucideIcon,
+  LogIn,
   Search,
   Settings,
   ShieldCheck,
@@ -47,7 +48,10 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
   },
   {
     section: "Admin",
-    items: [{ label: "Settings", icon: Settings, enabled: false }],
+    items: [
+      { label: "Users", href: "/admin/users", icon: Users, enabled: true },
+      { label: "Settings", icon: Settings, enabled: false },
+    ],
   },
 ];
 
@@ -148,6 +152,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <ThemeToggle />
+
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+          >
+            <LogIn size={15} />
+            Sign in
+          </Link>
 
           <span className="grid size-8 place-items-center rounded-full bg-[var(--primary-100)] text-[12px] font-semibold text-[var(--primary-700)]">
             LF
