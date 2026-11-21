@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* Design tokens — docs/UI_UX_DESIGN.md §2.2 */
+:root {
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --bg-inverse: #0f172a;
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #f8fafc;
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --primary-100: #e0e7ff;
+  --accent-500: #06b6d4;
+  --success-600: #059669;
+  --warning-500: #f59e0b;
+  --danger-600: #dc2626;
+  --info-500: #0ea5e9;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-e1: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-e2: 0 4px 12px rgb(15 23 42 / 0.08);
+  --shadow-e3: 0 12px 32px rgb(15 23 42 / 0.14);
+}
+
+[data-theme="dark"] {
+  --bg-canvas: #0b1120;
+  --bg-surface: #111827;
+  --bg-subtle: #1f2937;
+  --bg-inverse: #f8fafc;
+  --border-default: #1f2937;
+  --border-strong: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-inverse: #0f172a;
+  --primary-600: #6366f1;
+  --primary-700: #818cf8;
+  --primary-100: #312e81;
+  --shadow-e1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-e2: 0 4px 12px rgb(0 0 0 / 0.45);
+  --shadow-e3: 0 12px 32px rgb(0 0 0 / 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-canvas: #0b1120;
+    --bg-surface: #111827;
+    --bg-subtle: #1f2937;
+    --bg-inverse: #f8fafc;
+    --border-default: #1f2937;
+    --border-strong: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --text-inverse: #0f172a;
+    --primary-600: #6366f1;
+    --primary-700: #818cf8;
+    --primary-100: #312e81;
+  }
+}
+
+* {
+  border-color: var(--border-default);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5715;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--primary-100);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
