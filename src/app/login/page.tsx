@@ -115,6 +115,14 @@ export default function LoginPage() {
           <p className="mt-4 text-center text-xs text-[var(--text-tertiary)]">
             Demo: owner@acme-labs.com · NeatSprint!2026
           </p>
+          <p className="mt-2 text-center text-xs">
+            <a
+              href="/forgot-password"
+              className="text-[var(--primary-600)] hover:text-[var(--primary-700)]"
+            >
+              Forgot password?
+            </a>
+          </p>
         </form>
       </div>
     </div>

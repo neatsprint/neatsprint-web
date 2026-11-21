@@ -50,7 +50,8 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
     section: "Admin",
     items: [
       { label: "Users", href: "/admin/users", icon: Users, enabled: true },
-      { label: "Settings", icon: Settings, enabled: false },
+      { label: "Roles", href: "/admin/roles", icon: ShieldCheck, enabled: true },
+      { label: "Settings", href: "/admin/settings", icon: Settings, enabled: true },
     ],
   },
 ];
