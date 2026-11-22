@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { GoogleLogin } from "@/components/google-login";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,7 +69,17 @@ export default function LoginPage() {
             Sign in to your workspace.
           </p>
 
-          <label className="mt-6 block text-[13px] font-medium" htmlFor="email">
+          <div className="mt-6">
+            <GoogleLogin onError={setError} />
+          </div>
+
+          <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <span className="h-px flex-1 bg-[var(--border-default)]" />
+            or email
+            <span className="h-px flex-1 bg-[var(--border-default)]" />
+          </div>
+
+          <label className="mt-2 block text-[13px] font-medium" htmlFor="email">
             Email
           </label>
           <div className="mt-1 flex items-center gap-2 rounded-[var(--radius-md)] border px-3">
