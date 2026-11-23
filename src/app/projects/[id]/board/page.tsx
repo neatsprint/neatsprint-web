@@ -1,30 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { BoardClient, type BoardItem } from "@/app/projects/[id]/board/board-client";
 import { AppShell } from "@/components/app-shell";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 type Project = { id: string; key: string; name: string };
-type Item = {
-  id: string;
-  key: string;
-  title: string;
-  priority: string;
-  estimate_points: number | null;
-  assignee_id: string | null;
-};
-type Column = { status: string; items: Item[] };
+type Column = { status: string; items: BoardItem[] };
 type Sprint = { id: string; name: string; state: string };
-
-const LABELS: Record<string, string> = {
-  TODO: "To do",
-  IN_PROGRESS: "In progress",
-  IN_REVIEW: "In review",
-  BLOCKED: "Blocked",
-  DONE: "Done",
-};
 
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -85,50 +70,11 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         </nav>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4">
-        {columns.map((column) => (
-          <section
-            key={column.status}
-            className="flex w-64 shrink-0 flex-col rounded-[var(--radius-lg)] border bg-[var(--bg-subtle)]"
-          >
-            <header className="flex items-center justify-between px-3 py-2">
-              <h2 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-                {LABELS[column.status] ?? column.status}
-              </h2>
-              <span className="text-[11px] text-[var(--text-tertiary)]">
-                {column.items.length}
-              </span>
-            </header>
-            <div className="space-y-2 p-2">
-              {column.items.map((item) => (
-                <article
-                  key={item.id}
-                  className="rounded-[var(--radius-md)] border bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-e1)]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="mono text-[11px] text-[var(--text-tertiary)]">
-                      {item.key}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
-                      {item.priority}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[13px] font-medium leading-snug">{item.title}</p>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-tertiary)]">
-                    <span>{item.assignee_id ? "Assigned" : "Unassigned"}</span>
-                    <span>{item.estimate_points ?? "—"} pts</span>
-                  </div>
-                </article>
-              ))}
-              {column.items.length === 0 ? (
-                <p className="px-2 py-6 text-center text-[12px] text-[var(--text-tertiary)]">
-                  Empty
-                </p>
-              ) : null}
-            </div>
-          </section>
-        ))}
-      </div>
+      <BoardClient
+        initialColumns={columns}
+        canTransition={profile.permissions.includes("task:item:transition")}
+        canComment={profile.permissions.includes("task:item:comment")}
+      />
     </AppShell>
   );
 }
