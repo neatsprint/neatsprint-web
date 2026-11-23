@@ -63,6 +63,12 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
           >
             Backlog
           </Link>
+          <Link
+            href={`/projects/${id}/planning`}
+            className="rounded-[var(--radius-md)] px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+          >
+            Planning
+          </Link>
         </nav>
       </div>
 

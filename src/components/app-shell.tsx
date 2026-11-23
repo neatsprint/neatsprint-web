@@ -40,7 +40,7 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
   },
   {
     section: "Team",
-    items: [{ label: "Teams", icon: Users, enabled: false }],
+    items: [{ label: "Teams", href: "/teams", icon: Users, enabled: true }],
   },
   {
     section: "Insights",
