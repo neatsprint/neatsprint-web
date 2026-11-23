@@ -8,6 +8,8 @@ import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 type Project = { id: string; key: string; name: string };
+type Sprint = { id: string; name: string; state: string };
+type User = { id: string; full_name: string; email: string; status: string };
 
 export default async function BacklogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,9 +17,11 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
   if (!profile) redirect("/login");
   const token = await getAccessToken();
 
-  const [projectResponse, backlogResponse] = await Promise.all([
+  const [projectResponse, backlogResponse, sprintsResponse, usersResponse] = await Promise.all([
     gatewayFetch(`/tasks/projects/${id}`, {}, token),
     gatewayFetch(`/tasks/projects/${id}/backlog`, {}, token),
+    gatewayFetch(`/tasks/sprints?project_id=${id}`, {}, token),
+    gatewayFetch("/iam/users?per_page=200", {}, token),
   ]);
   if (projectResponse.status === 401) redirect("/login");
   if (!projectResponse.ok) redirect("/projects");
@@ -25,6 +29,12 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
   const project = ((await projectResponse.json()) as { data: Project }).data;
   const items: BacklogItem[] = backlogResponse.ok
     ? ((await backlogResponse.json()) as { data: BacklogItem[] }).data
+    : [];
+  const sprints: Sprint[] = sprintsResponse.ok
+    ? ((await sprintsResponse.json()) as { data: Sprint[] }).data
+    : [];
+  const users: User[] = usersResponse.ok
+    ? ((await usersResponse.json()) as { data: User[] }).data
     : [];
 
   return (
@@ -63,8 +73,14 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
       </div>
 
       <BacklogClient
+        projectId={id}
         initialItems={items}
+        sprints={sprints}
+        users={users}
         canEdit={profile.permissions.includes("task:item:edit")}
+        canTransition={profile.permissions.includes("task:item:transition")}
+        canAssign={profile.permissions.includes("task:item:assign")}
+        canDelete={profile.permissions.includes("task:item:delete")}
       />
     </AppShell>
   );
