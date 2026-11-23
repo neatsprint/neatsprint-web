@@ -33,7 +33,7 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
     section: "Work",
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard, enabled: true },
-      { label: "Projects", icon: FolderKanban, enabled: false },
+      { label: "Projects", href: "/projects", icon: FolderKanban, enabled: true },
       { label: "Timesheet", icon: Clock3, enabled: false },
       { label: "My screenshots", icon: ShieldCheck, enabled: false },
     ],
