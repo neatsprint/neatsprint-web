@@ -94,7 +94,8 @@ export default async function ProjectSettingsPage({
       <section className="mt-4 max-w-2xl rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
         <h2 className="mb-1 text-base font-semibold">Project teams</h2>
         <p className="mb-3 text-[13px] text-[var(--text-secondary)]">
-          Teams linked to this project. Access enforcement uses this mapping in a later step.
+          Only members of these teams can open this project. Leave every box clear to make the
+          project visible to the whole workspace.
         </p>
         <ProjectTeams
           projectId={id}
