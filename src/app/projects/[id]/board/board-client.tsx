@@ -21,6 +21,7 @@ export type BoardItem = {
 type Column = { status: string; items: BoardItem[] };
 
 type Comment = { id: string; author_id: string; body: string; created_at: string };
+type Attachment = { id: string; file_name: string; content_type: string; size_bytes: number };
 
 const LABELS: Record<string, string> = {
   TODO: "To do",
@@ -193,8 +194,10 @@ function ItemDrawer({
   onTransition: (status: string) => void;
 }) {
   const [comments, setComments] = useState<Comment[] | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [body, setBody] = useState("");
   const [pending, setPending] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/session/items/${item.id}/comments`).catch(() => null);
@@ -208,6 +211,10 @@ function ItemDrawer({
 
   useEffect(() => {
     void load();
+    fetch(`/api/session/items/${item.id}/attachments`)
+      .then((response) => (response.ok ? response.json() : { data: [] }))
+      .then((payload: { data: Attachment[] }) => setAttachments(payload.data))
+      .catch(() => setAttachments([]));
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -215,8 +222,7 @@ function ItemDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [load, onClose]);
 
-  async function addComment(event: React.FormEvent) {
-    event.preventDefault();
+  async function addComment(event: React.FormEvent) {    event.preventDefault();
     if (!body.trim()) return;
     setPending(true);
     const response = await fetch(`/api/session/items/${item.id}/comments`, {
@@ -229,6 +235,58 @@ function ItemDrawer({
       await load();
     }
     setPending(false);
+  }
+
+  async function uploadAttachment(file: File) {
+    setUploading(true);
+    const presign = await fetch(`/api/session/items/${item.id}/attachments/presign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        file_name: file.name,
+        content_type: file.type || "application/octet-stream",
+        size_bytes: file.size,
+      }),
+    }).catch(() => null);
+    if (!presign || !presign.ok) {
+      setUploading(false);
+      return;
+    }
+    const prepared = (await presign.json()) as {
+      data: { upload_url: string; object_key: string };
+    };
+    const put = await fetch(prepared.data.upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    }).catch(() => null);
+    if (!put || !put.ok) {
+      setUploading(false);
+      return;
+    }
+    const confirm = await fetch(`/api/session/items/${item.id}/attachments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        object_key: prepared.data.object_key,
+        file_name: file.name,
+        content_type: file.type || "application/octet-stream",
+        size_bytes: file.size,
+      }),
+    }).catch(() => null);
+    if (confirm?.ok) {
+      const response = await fetch(`/api/session/items/${item.id}/attachments`);
+      const payload = (await response.json()) as { data: Attachment[] };
+      setAttachments(payload.data);
+    }
+    setUploading(false);
+  }
+
+  async function downloadAttachment(id: string) {
+    const response = await fetch(`/api/session/attachments/${id}/url`);
+    if (!response.ok) return;
+    const payload = (await response.json()) as { data: { download_url: string } };
+    window.open(payload.data.download_url, "_blank");
   }
 
   return (
@@ -286,6 +344,45 @@ function ItemDrawer({
                   ))
                 : null}
             </div>
+          </section>
+
+          <section>
+            <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+              Attachments
+            </h3>
+            <ul className="mt-2 space-y-2">
+              {attachments.map((attachment) => (
+                <li
+                  key={attachment.id}
+                  className="flex items-center justify-between rounded-[var(--radius-md)] border p-2 text-[13px]"
+                >
+                  <span className="truncate">{attachment.file_name}</span>
+                  <button
+                    type="button"
+                    onClick={() => downloadAttachment(attachment.id)}
+                    className="text-[12px] font-medium text-[var(--primary-600)]"
+                  >
+                    Download
+                  </button>
+                </li>
+              ))}
+              {attachments.length === 0 ? (
+                <li className="text-[13px] text-[var(--text-tertiary)]">No attachments.</li>
+              ) : null}
+            </ul>
+            <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-[12px] font-medium text-[var(--primary-600)]">
+              {uploading ? "Uploading…" : "Add attachment"}
+              <input
+                type="file"
+                className="hidden"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadAttachment(file);
+                  event.target.value = "";
+                }}
+              />
+            </label>
           </section>
 
           <section>
