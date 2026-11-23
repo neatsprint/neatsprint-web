@@ -78,6 +78,12 @@ export default async function ProjectsPage() {
                 >
                   Backlog
                 </Link>
+                <Link
+                  href={`/projects/${project.id}/settings`}
+                  className="font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                >
+                  Settings
+                </Link>
               </div>
             </section>
           ))}

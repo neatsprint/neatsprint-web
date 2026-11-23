@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Loader2, Play } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -116,6 +116,28 @@ export function PlanningClient({
           >
             {pending === "start" ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
             Start sprint
+          </Button>
+        ) : null}
+        {sprint.state === "ACTIVE" && canManage ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!window.confirm(`Complete “${sprint.name}”? Unfinished items return to the backlog.`)) {
+                return;
+              }
+              void call("complete", `/api/session/sprints/${sprint.id}/complete`, {
+                method: "POST",
+                body: "{}",
+              });
+            }}
+            disabled={pending === "complete"}
+          >
+            {pending === "complete" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <CheckCircle2 size={16} />
+            )}
+            Complete sprint
           </Button>
         ) : null}
       </div>
