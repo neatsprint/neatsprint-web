@@ -2,7 +2,6 @@
 
 import {
   BarChart3,
-  Bell,
   Clock3,
   FolderKanban,
   LayoutDashboard,
@@ -18,6 +17,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -144,13 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             No timer running
           </span>
 
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="inline-flex size-9 items-center justify-center rounded-[var(--radius-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-          >
-            <Bell size={18} />
-          </button>
+          <NotificationBell />
 
           <ThemeToggle />
 
