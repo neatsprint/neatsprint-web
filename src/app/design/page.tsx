@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { DesignComponentsDemo } from "@/components/ui/design-components-demo";
 
 export const metadata: Metadata = { title: "Design system" };
 
@@ -25,6 +26,15 @@ const type = [
   ["H3", "text-base font-semibold", "AUTH-142"],
   ["Body", "text-sm", "Screenshots pause when your timer stops."],
   ["Caption", "text-xs text-[var(--text-secondary)]", "Updated 2 minutes ago"],
+] as const;
+
+const components = [
+  ["DataTable", "Headered, token-styled table shell used by the backlog."],
+  ["Drawer", "Right-side modal panel with Escape and backdrop close."],
+  ["KanbanColumn", "Board column with title, count, empty placeholder and drop target."],
+  ["PriorityBadge", "Priority chip shared by the board and backlog."],
+  ["UserPill", "Avatar initial plus name, with an explicit unassigned state."],
+  ["EmptyState", "Consistent empty, no-results and access messaging."],
 ] as const;
 
 export default function DesignPage() {
@@ -112,6 +122,25 @@ export default function DesignPage() {
           </div>
         </section>
       </div>
+
+      <section className="mt-4 rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5">
+        <h2 className="text-base font-semibold">Components</h2>
+        <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
+          Shared primitives used by the M2 planning surfaces. Every component uses tokens and has a
+          loading, empty or permission-aware state where relevant.
+        </p>
+        <dl className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {components.map(([name, description]) => (
+            <div key={name} className="rounded-[var(--radius-md)] border p-3">
+              <dt className="mono text-[12px] font-semibold">{name}</dt>
+              <dd className="mt-1 text-[12px] text-[var(--text-secondary)]">{description}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-6">
+          <DesignComponentsDemo />
+        </div>
+      </section>
     </AppShell>
   );
 }

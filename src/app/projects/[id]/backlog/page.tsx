@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { BacklogClient, type BacklogItem } from "@/app/projects/[id]/backlog/backlog-client";
 import { AppShell } from "@/components/app-shell";
+import { ProjectUnavailable } from "@/components/project-unavailable";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,7 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
     gatewayFetch("/iam/users?per_page=200", {}, token),
   ]);
   if (projectResponse.status === 401) redirect("/login");
+  if (projectResponse.status === 404) return <ProjectUnavailable />;
   if (!projectResponse.ok) redirect("/projects");
 
   const project = ((await projectResponse.json()) as { data: Project }).data;
@@ -71,6 +74,10 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
           </Link>
         </nav>
       </div>
+
+      {!backlogResponse.ok ? (
+        <InlineAlert>Some backlog data could not be loaded. Try refreshing the page.</InlineAlert>
+      ) : null}
 
       <BacklogClient
         projectId={id}

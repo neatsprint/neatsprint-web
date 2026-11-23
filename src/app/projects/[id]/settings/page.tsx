@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { ProjectSettingsForm } from "@/app/projects/[id]/settings/settings-form";
 import { ProjectTeams } from "@/app/projects/[id]/settings/project-teams";
 import { AppShell } from "@/components/app-shell";
+import { ProjectUnavailable } from "@/components/project-unavailable";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,7 @@ export default async function ProjectSettingsPage({
   const token = await getAccessToken();
   const response = await gatewayFetch(`/tasks/projects/${id}`, {}, token);
   if (response.status === 401) redirect("/login");
+  if (response.status === 404) return <ProjectUnavailable />;
   if (!response.ok) redirect("/projects");
   const project = ((await response.json()) as { data: Project }).data;
   const canEdit = profile.permissions.includes("task:project:edit");
@@ -81,6 +84,10 @@ export default async function ProjectSettingsPage({
           </Link>
         </nav>
       </div>
+
+      {!teamsResponse.ok || !projectTeamsResponse.ok ? (
+        <InlineAlert>Some project settings could not be loaded.</InlineAlert>
+      ) : null}
 
       <section className="max-w-2xl rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
         {!canEdit ? (

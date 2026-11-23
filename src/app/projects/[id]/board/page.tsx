@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { BoardClient, type BoardItem } from "@/app/projects/[id]/board/board-client";
 import { AppShell } from "@/components/app-shell";
+import { ProjectUnavailable } from "@/components/project-unavailable";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,7 @@ export const dynamic = "force-dynamic";
 type Project = { id: string; key: string; name: string };
 type Column = { status: string; items: BoardItem[] };
 type Sprint = { id: string; name: string; state: string };
+type User = { id: string; full_name: string };
 
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,16 +20,21 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
   if (!profile) redirect("/login");
   const token = await getAccessToken();
 
-  const [projectResponse, sprintsResponse] = await Promise.all([
+  const [projectResponse, sprintsResponse, usersResponse] = await Promise.all([
     gatewayFetch(`/tasks/projects/${id}`, {}, token),
     gatewayFetch(`/tasks/sprints?project_id=${id}`, {}, token),
+    gatewayFetch("/iam/users?per_page=200", {}, token),
   ]);
   if (projectResponse.status === 401) redirect("/login");
+  if (projectResponse.status === 404) return <ProjectUnavailable />;
   if (!projectResponse.ok) redirect("/projects");
 
   const project = ((await projectResponse.json()) as { data: Project }).data;
   const sprints: Sprint[] = sprintsResponse.ok
     ? ((await sprintsResponse.json()) as { data: Sprint[] }).data
+    : [];
+  const users: User[] = usersResponse.ok
+    ? ((await usersResponse.json()) as { data: User[] }).data
     : [];
   const active = sprints.find((sprint) => sprint.state === "ACTIVE") ?? sprints[0];
 
@@ -76,8 +84,13 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         </nav>
       </div>
 
+      {!boardResponse.ok ? (
+        <InlineAlert>Some board data could not be loaded. Try refreshing the page.</InlineAlert>
+      ) : null}
+
       <BoardClient
         initialColumns={columns}
+        users={users}
         canTransition={profile.permissions.includes("task:item:transition")}
         canComment={profile.permissions.includes("task:item:comment")}
       />

@@ -3,6 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  PRIORITIES,
+  PriorityBadge,
+  STATUSES,
+  STATUS_LABELS,
+  StatusBadge,
+  priorityClass,
+  statusClass,
+} from "@/components/ui/task-badges";
+import { UserPill } from "@/components/ui/user-pill";
 import { cn } from "@/lib/utils";
 
 export type BacklogItem = {
@@ -24,32 +36,7 @@ type ItemPatch = Partial<
   Pick<BacklogItem, "title" | "priority" | "estimate_points" | "assignee_id" | "sprint_id">
 >;
 
-const STATUSES = ["TODO", "IN_PROGRESS", "IN_REVIEW", "BLOCKED", "DONE"] as const;
-const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 const TYPES = ["TASK", "STORY", "BUG", "SUGGESTION"] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  TODO: "To do",
-  IN_PROGRESS: "In progress",
-  IN_REVIEW: "In review",
-  BLOCKED: "Blocked",
-  DONE: "Done",
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  TODO: "bg-[var(--bg-subtle)] text-[var(--text-secondary)]",
-  IN_PROGRESS: "bg-[var(--primary-100)] text-[var(--primary-700)]",
-  IN_REVIEW: "bg-[var(--info-500)] text-white",
-  BLOCKED: "bg-[var(--warning-500)] text-white",
-  DONE: "bg-[var(--success-600)] text-white",
-};
-
-const PRIORITY_STYLES: Record<string, string> = {
-  LOW: "bg-[var(--bg-subtle)] text-[var(--text-secondary)]",
-  MEDIUM: "bg-[var(--primary-100)] text-[var(--primary-700)]",
-  HIGH: "bg-[var(--warning-500)] text-white",
-  URGENT: "bg-[var(--danger-600)] text-white",
-};
 
 const CONTROL =
   "h-9 rounded-[var(--radius-md)] border bg-[var(--bg-surface)] px-2 text-[13px]";
@@ -547,40 +534,35 @@ export function BacklogClient({
       ) : null}
 
       {items.length === 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-dashed p-10 text-center">
-          <p className="text-base font-medium">This backlog is empty</p>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            Add your first item to get started.
-          </p>
-        </div>
+        <EmptyState
+          title="This backlog is empty"
+          description="Add your first item to get started."
+        />
       ) : visible.length === 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-dashed p-10 text-center">
-          <p className="text-base font-medium">No matches</p>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            {query ? `No matches for “${query}”. ` : ""}Try a different term or clear filters.
-          </p>
-          <Button variant="secondary" size="sm" className="mt-3" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        </div>
+        <EmptyState
+          title="No matches"
+          description={`${query ? `No matches for “${query}”. ` : ""}Try a different term or clear filters.`}
+          action={
+            <Button variant="secondary" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          }
+        />
       ) : (
-        <section className="overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-e1)]">
-          <table className="w-full text-left text-[13px]">
-            <thead className="bg-[var(--bg-subtle)] text-[11px] uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-              <tr>
-                <th className="w-10 px-3 py-3 font-medium">
-                  <span className="sr-only">Select</span>
-                </th>
-                <th className="px-3 py-3 font-medium">Key</th>
-                <th className="px-3 py-3 font-medium">Title</th>
-                <th className="px-3 py-3 font-medium">Type</th>
-                <th className="px-3 py-3 font-medium">Status</th>
-                <th className="px-3 py-3 font-medium">Priority</th>
-                <th className="px-3 py-3 font-medium">Assignee</th>
-                <th className="px-3 py-3 font-medium">Estimate</th>
-                <th className="px-3 py-3 font-medium">Sprint</th>
-              </tr>
-            </thead>
+        <DataTable
+          label="Project backlog"
+          columns={[
+            { key: "select", label: <span className="sr-only">Select</span>, className: "w-10" },
+            { key: "key", label: "Key" },
+            { key: "title", label: "Title" },
+            { key: "type", label: "Type" },
+            { key: "status", label: "Status" },
+            { key: "priority", label: "Priority" },
+            { key: "assignee", label: "Assignee" },
+            { key: "estimate", label: "Estimate" },
+            { key: "sprint", label: "Sprint" },
+          ]}
+        >
             {groups.map((group) => {
               const allSelected = group.items.every((item) => selected.has(item.id));
               return (
@@ -676,7 +658,7 @@ export function BacklogClient({
                               }
                               className={cn(
                                 "h-7 rounded-full border-0 px-2 text-[11px] font-medium uppercase tracking-[0.04em]",
-                                STATUS_STYLES[item.status],
+                                statusClass(item.status),
                               )}
                               aria-label={`Status for ${item.key}`}
                             >
@@ -687,14 +669,7 @@ export function BacklogClient({
                               ))}
                             </select>
                           ) : (
-                            <span
-                              className={cn(
-                                "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.04em]",
-                                STATUS_STYLES[item.status],
-                              )}
-                            >
-                              {STATUS_LABELS[item.status] ?? item.status}
-                            </span>
+                            <StatusBadge status={item.status} />
                           )}
                         </td>
                         <td className="px-3 py-2">
@@ -706,7 +681,7 @@ export function BacklogClient({
                               }
                               className={cn(
                                 "h-7 rounded-full border-0 px-2 text-[11px] font-medium uppercase tracking-[0.04em]",
-                                PRIORITY_STYLES[item.priority],
+                                priorityClass(item.priority),
                               )}
                               aria-label={`Priority for ${item.key}`}
                             >
@@ -717,14 +692,7 @@ export function BacklogClient({
                               ))}
                             </select>
                           ) : (
-                            <span
-                              className={cn(
-                                "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.04em]",
-                                PRIORITY_STYLES[item.priority],
-                              )}
-                            >
-                              {item.priority}
-                            </span>
+                            <PriorityBadge priority={item.priority} />
                           )}
                         </td>
                         <td className="px-3 py-2">
@@ -752,14 +720,9 @@ export function BacklogClient({
                               ))}
                             </select>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 text-[12px]">
-                              {assignee ? (
-                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--bg-subtle)] text-[10px] font-semibold">
-                                  {assignee.full_name.slice(0, 1).toUpperCase()}
-                                </span>
-                              ) : null}
-                              {displayName(item.assignee_id)}
-                            </span>
+                            <UserPill
+                              name={item.assignee_id ? displayName(item.assignee_id) : null}
+                            />
                           )}
                         </td>
                         <td className="px-3 py-2">
@@ -819,8 +782,7 @@ export function BacklogClient({
                 </tbody>
               );
             })}
-          </table>
-        </section>
+        </DataTable>
       )}
     </div>
   );

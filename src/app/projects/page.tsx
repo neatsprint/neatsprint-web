@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { CreateProjectForm } from "@/app/projects/create-project-form";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export default async function ProjectsPage() {
     ? ((await response.json()) as { data: Project[] }).data
     : [];
   const canCreate = profile.permissions.includes("task:project:create");
+  const loadFailed = !response.ok;
 
   return (
     <AppShell>
@@ -33,19 +36,19 @@ export default async function ProjectsPage() {
           <p className="text-[13px] text-[var(--text-secondary)]">Work</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Projects</h1>
           <p className="mt-1 text-[var(--text-secondary)]">
-            {projects.length} active projects
+            {loadFailed ? "Projects unavailable" : `${projects.length} active projects`}
           </p>
         </div>
         {canCreate ? <CreateProjectForm /> : null}
       </div>
 
-      {projects.length === 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-dashed p-10 text-center">
-          <p className="text-base font-medium">No projects yet</p>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            Create a project to start planning work.
-          </p>
-        </div>
+      {loadFailed ? (
+        <InlineAlert>Projects could not be loaded. Try refreshing the page.</InlineAlert>
+      ) : projects.length === 0 ? (
+        <EmptyState
+          title="No projects yet"
+          description="Create a project to start planning work."
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (

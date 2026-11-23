@@ -1,9 +1,18 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { KanbanColumn } from "@/components/ui/kanban-column";
+import {
+  PriorityBadge,
+  StatusBadge,
+  statusLabel,
+} from "@/components/ui/task-badges";
+import { UserPill } from "@/components/ui/user-pill";
 import { cn } from "@/lib/utils";
 
 export type BoardItem = {
@@ -19,17 +28,10 @@ export type BoardItem = {
 };
 
 type Column = { status: string; items: BoardItem[] };
+type User = { id: string; full_name: string };
 
 type Comment = { id: string; author_id: string; body: string; created_at: string };
 type Attachment = { id: string; file_name: string; content_type: string; size_bytes: number };
-
-const LABELS: Record<string, string> = {
-  TODO: "To do",
-  IN_PROGRESS: "In progress",
-  IN_REVIEW: "In review",
-  BLOCKED: "Blocked",
-  DONE: "Done",
-};
 
 const TRANSITIONS: Record<string, string[]> = {
   TODO: ["IN_PROGRESS", "BLOCKED"],
@@ -41,10 +43,12 @@ const TRANSITIONS: Record<string, string[]> = {
 
 export function BoardClient({
   initialColumns,
+  users,
   canTransition,
   canComment,
 }: {
   initialColumns: Column[];
+  users: User[];
   canTransition: boolean;
   canComment: boolean;
 }) {
@@ -52,6 +56,13 @@ export function BoardClient({
   const [dragging, setDragging] = useState<string | null>(null);
   const [selected, setSelected] = useState<BoardItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const userMap = new Map(users.map((user) => [user.id, user.full_name]));
+
+  function assigneeName(userId: string | null): string | null {
+    if (!userId) return null;
+    return userMap.get(userId) ?? "Unknown user";
+  }
 
   function findItem(itemId: string): { item: BoardItem; status: string } | null {
     for (const column of columns) {
@@ -95,16 +106,15 @@ export function BoardClient({
 
   return (
     <div>
-      {error ? (
-        <p role="alert" className="mb-3 rounded-[var(--radius-md)] border border-[var(--danger-600)] p-2 text-[13px] text-[var(--danger-600)]">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
 
       <div className="flex gap-3 overflow-x-auto pb-4">
         {columns.map((column) => (
-          <section
+          <KanbanColumn
             key={column.status}
+            label={statusLabel(column.status)}
+            count={column.items.length}
+            emptyLabel="Drop items here"
             onDragOver={(event) => {
               if (canTransition) event.preventDefault();
             }}
@@ -114,59 +124,42 @@ export function BoardClient({
               if (itemId) void move(itemId, column.status);
               setDragging(null);
             }}
-            className="flex w-64 shrink-0 flex-col rounded-[var(--radius-lg)] border bg-[var(--bg-subtle)]"
           >
-            <header className="flex items-center justify-between px-3 py-2">
-              <h2 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-                {LABELS[column.status] ?? column.status}
-              </h2>
-              <span className="text-[11px] text-[var(--text-tertiary)]">
-                {column.items.length}
-              </span>
-            </header>
-            <div className="flex-1 space-y-2 p-2">
-              {column.items.map((item) => (
-                <article
-                  key={item.id}
-                  draggable={canTransition}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData("text/plain", item.id);
-                    setDragging(item.id);
-                  }}
-                  onClick={() => setSelected(item)}
-                  className={cn(
-                    "cursor-pointer rounded-[var(--radius-md)] border bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-e1)]",
-                    dragging === item.id && "opacity-50",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="mono text-[11px] text-[var(--text-tertiary)]">
-                      {item.key}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
-                      {item.priority}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[13px] font-medium leading-snug">{item.title}</p>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-tertiary)]">
-                    <span>{item.assignee_id ? "Assigned" : "Unassigned"}</span>
-                    <span>{item.estimate_points ?? "—"} pts</span>
-                  </div>
-                </article>
-              ))}
-              {column.items.length === 0 ? (
-                <p className="px-2 py-6 text-center text-[12px] text-[var(--text-tertiary)]">
-                  Drop items here
-                </p>
-              ) : null}
-            </div>
-          </section>
+            {column.items.map((item) => (
+              <article
+                key={item.id}
+                draggable={canTransition}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("text/plain", item.id);
+                  setDragging(item.id);
+                }}
+                onClick={() => setSelected(item)}
+                className={cn(
+                  "cursor-pointer rounded-[var(--radius-md)] border bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-e1)]",
+                  dragging === item.id && "opacity-50",
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="mono text-[11px] text-[var(--text-tertiary)]">
+                    {item.key}
+                  </span>
+                  <PriorityBadge priority={item.priority} />
+                </div>
+                <p className="mt-1 text-[13px] font-medium leading-snug">{item.title}</p>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[var(--text-tertiary)]">
+                  <UserPill name={assigneeName(item.assignee_id)} />
+                  <span className="shrink-0">{item.estimate_points ?? "—"} pts</span>
+                </div>
+              </article>
+            ))}
+          </KanbanColumn>
         ))}
       </div>
 
       {selected ? (
         <ItemDrawer
           item={selected}
+          assigneeName={assigneeName(selected.assignee_id)}
           canTransition={canTransition}
           canComment={canComment}
           onClose={() => setSelected(null)}
@@ -182,12 +175,14 @@ export function BoardClient({
 
 function ItemDrawer({
   item,
+  assigneeName,
   canTransition,
   canComment,
   onClose,
   onTransition,
 }: {
   item: BoardItem;
+  assigneeName: string | null;
   canTransition: boolean;
   canComment: boolean;
   onClose: () => void;
@@ -215,14 +210,10 @@ function ItemDrawer({
       .then((response) => (response.ok ? response.json() : { data: [] }))
       .then((payload: { data: Attachment[] }) => setAttachments(payload.data))
       .catch(() => setAttachments([]));
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [load, onClose]);
+  }, [load, item.id]);
 
-  async function addComment(event: React.FormEvent) {    event.preventDefault();
+  async function addComment(event: React.FormEvent) {
+    event.preventDefault();
     if (!body.trim()) return;
     setPending(true);
     const response = await fetch(`/api/session/items/${item.id}/comments`, {
@@ -290,61 +281,49 @@ function ItemDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onClose}>
-      <aside
-        className="flex h-full w-full max-w-xl flex-col border-l bg-[var(--bg-surface)] shadow-[var(--shadow-e3)]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="flex items-start justify-between border-b p-5">
-          <div>
-            <p className="mono text-[12px] text-[var(--text-tertiary)]">{item.key}</p>
-            <h2 className="mt-1 text-lg font-semibold leading-snug">{item.title}</h2>
-            <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
-              {item.type} · {item.priority} · {item.estimate_points ?? "—"} pts
-            </p>
+    <Drawer title={item.title} subtitle={item.key} onClose={onClose}>
+      <div className="space-y-6">
+        <section>
+          <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            Details
+          </h3>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[var(--text-secondary)]">
+            <StatusBadge status={item.status} />
+            <PriorityBadge priority={item.priority} />
+            <UserPill name={assigneeName} />
+            <span className="text-[var(--text-tertiary)]">{item.estimate_points ?? "—"} pts</span>
           </div>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="rounded-[var(--radius-md)] p-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-          >
-            <X size={18} />
-          </button>
-        </header>
+        </section>
 
-        <div className="flex-1 space-y-6 overflow-y-auto p-5">
-          <section>
-            <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
-              Description
-            </h3>
-            <p className="mt-2 whitespace-pre-wrap text-[13px] text-[var(--text-secondary)]">
-              {item.description || "No description yet."}
-            </p>
-          </section>
+        <section>
+          <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            Description
+          </h3>
+          <p className="mt-2 whitespace-pre-wrap text-[13px] text-[var(--text-secondary)]">
+            {item.description || "No description yet."}
+          </p>
+        </section>
 
-          <section>
-            <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
-              Status
-            </h3>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className="rounded-full border px-2.5 py-1 text-[12px] font-medium">
-                {LABELS[item.status] ?? item.status}
-              </span>
-              {canTransition
-                ? (TRANSITIONS[item.status] ?? []).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => onTransition(status)}
-                      className="rounded-full border border-dashed px-2.5 py-1 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-                    >
-                      → {LABELS[status] ?? status}
-                    </button>
-                  ))
-                : null}
-            </div>
-          </section>
+        <section>
+          <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            Status
+          </h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusBadge status={item.status} />
+            {canTransition
+              ? (TRANSITIONS[item.status] ?? []).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => onTransition(status)}
+                    className="rounded-full border border-dashed px-2.5 py-1 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                  >
+                    → {statusLabel(status)}
+                  </button>
+                ))
+              : null}
+          </div>
+        </section>
 
           <section>
             <h3 className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
@@ -418,7 +397,6 @@ function ItemDrawer({
             ) : null}
           </section>
         </div>
-      </aside>
-    </div>
+    </Drawer>
   );
 }

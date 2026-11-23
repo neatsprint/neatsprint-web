@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { PriorityBadge } from "@/components/ui/task-badges";
 
 type Item = {
   id: string;
@@ -80,7 +83,7 @@ export function PlanningClient({
             Create sprint
           </Button>
         </form>
-        {error ? <p className="mt-2 text-[13px] text-[var(--danger-600)]">{error}</p> : null}
+        {error ? <InlineAlert>{error}</InlineAlert> : null}
       </div>
     );
   }
@@ -89,11 +92,7 @@ export function PlanningClient({
 
   return (
     <div>
-      {error ? (
-        <p className="mb-3 rounded-[var(--radius-md)] border border-[var(--danger-600)] p-2 text-[13px] text-[var(--danger-600)]">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-4">
         <div>
@@ -152,6 +151,7 @@ export function PlanningClient({
               <li key={item.id} className="flex items-center gap-2 px-4 py-2">
                 <span className="mono text-[11px] text-[var(--text-tertiary)]">{item.key}</span>
                 <span className="flex-1 text-[13px]">{item.title}</span>
+                <PriorityBadge priority={item.priority} />
                 <span className="text-[11px] text-[var(--text-tertiary)]">
                   {item.estimate_points ?? "—"} pts
                 </span>
@@ -175,8 +175,13 @@ export function PlanningClient({
               </li>
             ))}
             {backlog.length === 0 ? (
-              <li className="px-4 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
-                Nothing left in the backlog.
+              <li>
+                <EmptyState
+                  compact
+                  className="border-0"
+                  title="Nothing left in the backlog"
+                  description="Every open item is already in the sprint."
+                />
               </li>
             ) : null}
           </ul>
@@ -191,6 +196,7 @@ export function PlanningClient({
               <li key={item.id} className="flex items-center gap-2 px-4 py-2">
                 <span className="mono text-[11px] text-[var(--text-tertiary)]">{item.key}</span>
                 <span className="flex-1 text-[13px]">{item.title}</span>
+                <PriorityBadge priority={item.priority} />
                 <span className="text-[11px] text-[var(--text-tertiary)]">
                   {item.estimate_points ?? "—"} pts
                 </span>
@@ -212,8 +218,13 @@ export function PlanningClient({
               </li>
             ))}
             {sprintItems.length === 0 ? (
-              <li className="px-4 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
-                Add items from the backlog.
+              <li>
+                <EmptyState
+                  compact
+                  className="border-0"
+                  title="No sprint items yet"
+                  description="Add items from the backlog to commit scope."
+                />
               </li>
             ) : null}
           </ul>

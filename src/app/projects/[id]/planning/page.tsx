@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { PlanningClient } from "@/app/projects/[id]/planning/planning-client";
 import { AppShell } from "@/components/app-shell";
+import { ProjectUnavailable } from "@/components/project-unavailable";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +33,10 @@ export default async function PlanningPage({ params }: { params: Promise<{ id: s
     gatewayFetch(`/tasks/projects/${id}/backlog`, {}, token),
   ]);
   if (projectResponse.status === 401) redirect("/login");
+  if (projectResponse.status === 404) return <ProjectUnavailable />;
   if (!projectResponse.ok) redirect("/projects");
+
+  let loadError = !sprintsResponse.ok || !backlogResponse.ok;
 
   const project = ((await projectResponse.json()) as { data: Project }).data;
   const sprints: Sprint[] = sprintsResponse.ok
@@ -51,6 +56,8 @@ export default async function PlanningPage({ params }: { params: Promise<{ id: s
     const itemsResponse = await gatewayFetch(`/tasks/sprints/${sprint.id}/items`, {}, token);
     if (itemsResponse.ok) {
       sprintItems = ((await itemsResponse.json()) as { data: Item[] }).data;
+    } else {
+      loadError = true;
     }
   }
   const sprintIds = new Set(sprintItems.map((item) => item.id));
@@ -87,6 +94,10 @@ export default async function PlanningPage({ params }: { params: Promise<{ id: s
           </Link>
         </nav>
       </div>
+
+      {loadError ? (
+        <InlineAlert>Some planning data could not be loaded. Try refreshing the page.</InlineAlert>
+      ) : null}
 
       <PlanningClient
         projectId={id}

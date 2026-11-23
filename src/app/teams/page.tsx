@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { CreateTeamForm } from "@/app/teams/create-team-form";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +19,7 @@ export default async function TeamsPage() {
   const teams: Team[] = response.ok
     ? ((await response.json()) as { data: Team[] }).data
     : [];
+  const loadFailed = !response.ok;
 
   const memberships = await Promise.all(
     teams.map(async (team) => {
@@ -40,6 +43,10 @@ export default async function TeamsPage() {
         {profile.permissions.includes("team:team:manage") ? <CreateTeamForm /> : null}
       </div>
 
+      {loadFailed ? (
+        <InlineAlert>Teams could not be loaded. Try refreshing the page.</InlineAlert>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {teams.map((team, index) => (
           <section
@@ -60,10 +67,12 @@ export default async function TeamsPage() {
             </p>
           </section>
         ))}
-        {teams.length === 0 ? (
-          <p className="rounded-[var(--radius-lg)] border border-dashed p-10 text-center text-[13px] text-[var(--text-secondary)]">
-            No teams yet. Create your first team.
-          </p>
+        {teams.length === 0 && !loadFailed ? (
+          <EmptyState
+            className="md:col-span-2 xl:col-span-3"
+            title="No teams yet"
+            description="Create your first team to group people around work."
+          />
         ) : null}
       </div>
     </AppShell>
