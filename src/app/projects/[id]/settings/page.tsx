@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ProjectSettingsForm } from "@/app/projects/[id]/settings/settings-form";
+import { ProjectTeams } from "@/app/projects/[id]/settings/project-teams";
 import { AppShell } from "@/components/app-shell";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 
@@ -31,6 +32,17 @@ export default async function ProjectSettingsPage({
   if (!response.ok) redirect("/projects");
   const project = ((await response.json()) as { data: Project }).data;
   const canEdit = profile.permissions.includes("task:project:edit");
+
+  const [teamsResponse, projectTeamsResponse] = await Promise.all([
+    gatewayFetch("/teams", {}, token),
+    gatewayFetch(`/tasks/projects/${id}/teams`, {}, token),
+  ]);
+  const teams = teamsResponse.ok
+    ? ((await teamsResponse.json()) as { data: Array<{ id: string; name: string }> }).data
+    : [];
+  const selected = projectTeamsResponse.ok
+    ? ((await projectTeamsResponse.json()) as { data: string[] }).data
+    : [];
 
   return (
     <AppShell>
@@ -77,6 +89,19 @@ export default async function ProjectSettingsPage({
           </p>
         ) : null}
         <ProjectSettingsForm project={project} />
+      </section>
+
+      <section className="mt-4 max-w-2xl rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
+        <h2 className="mb-1 text-base font-semibold">Project teams</h2>
+        <p className="mb-3 text-[13px] text-[var(--text-secondary)]">
+          Teams linked to this project. Access enforcement uses this mapping in a later step.
+        </p>
+        <ProjectTeams
+          projectId={id}
+          teams={teams}
+          selected={selected}
+          canEdit={canEdit}
+        />
       </section>
     </AppShell>
   );
