@@ -24,6 +24,7 @@ export async function POST(request: Request) {
   }
 
   const response = NextResponse.json({ data: payload.data?.user ?? null });
+  response.headers.set("Cache-Control", "no-store");
   const secure = process.env.NODE_ENV === "production";
   response.cookies.set(ACCESS_COOKIE, payload.data.access_token, {
     httpOnly: true,
