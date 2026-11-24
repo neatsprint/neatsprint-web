@@ -91,9 +91,13 @@ describe("BacklogClient", () => {
       target: { value: "URGENT" },
     });
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const calls = fetchMock.mock.calls as [string, RequestInit][];
-    expect(calls[0]?.[1]?.body ?? "").toContain('"priority":"URGENT"');
+    const patches = calls.filter(
+      ([url, init]) => url.startsWith("/api/session/items/") && init?.method === "PATCH",
+    );
+    expect(patches).toHaveLength(2);
+    expect(patches[0]?.[1]?.body ?? "").toContain('"priority":"URGENT"');
     await waitFor(() => expect(screen.queryByTestId("bulk-bar")).toBeNull());
   });
 

@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   type LucideIcon,
   LogIn,
-  Search,
   Settings,
   ShieldCheck,
   Timer,
@@ -19,6 +18,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { NotificationBell } from "@/components/notification-bell";
+import { GlobalSearch } from "@/components/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +57,7 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
       { label: "Users", href: "/admin/users", icon: Users, enabled: true },
       { label: "Roles", href: "/admin/roles", icon: ShieldCheck, enabled: true },
       { label: "Settings", href: "/admin/settings", icon: Settings, enabled: true },
+      { label: "Audit", href: "/admin/audit", icon: ShieldCheck, enabled: true },
     ],
   },
 ];
@@ -136,13 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center gap-3 border-b bg-[var(--bg-surface)] px-4">
-          <div className="flex flex-1 items-center gap-2 rounded-[var(--radius-md)] border bg-[var(--bg-subtle)] px-3 py-1.5 text-[var(--text-tertiary)] md:max-w-md">
-            <Search size={16} />
-            <span className="text-[13px]">Search projects, items and people</span>
-            <kbd className="ml-auto hidden rounded border bg-[var(--bg-surface)] px-1.5 py-0.5 text-[10px] md:block">
-              Ctrl K
-            </kbd>
-          </div>
+          <GlobalSearch />
 
           <span className="hidden items-center gap-2 rounded-full border px-3 py-1 text-[12px] text-[var(--text-secondary)] sm:flex">
             <Timer size={14} />

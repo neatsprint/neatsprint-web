@@ -32,6 +32,18 @@ export type BacklogItem = {
 type Sprint = { id: string; name: string; state: string };
 type User = { id: string; full_name: string; email: string; status: string };
 type GroupBy = "status" | "priority" | "sprint" | "none";
+type SavedView = {
+  id: string;
+  name: string;
+  view_type: string;
+  filters: {
+    query?: string;
+    type?: string;
+    priority?: string;
+    assignee?: string;
+    groupBy?: GroupBy;
+  };
+};
 type ItemPatch = Partial<
   Pick<BacklogItem, "title" | "priority" | "estimate_points" | "assignee_id" | "sprint_id">
 >;
@@ -120,6 +132,8 @@ export function BacklogClient({
   const [priorityFilter, setPriorityFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [selectedView, setSelectedView] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -168,6 +182,66 @@ export function BacklogClient({
     if (!focusedId || editingId) return;
     rowRefs.current.get(focusedId)?.focus();
   }, [focusedId, editingId]);
+
+  useEffect(() => {
+    fetch(`/api/session/projects/${projectId}/views?view_type=BACKLOG`)
+      .then((response) => (response.ok ? response.json() : { data: [] }))
+      .then((payload: { data: SavedView[] }) => setViews(payload.data))
+      .catch(() => setViews([]));
+  }, [projectId]);
+
+  function applyView(viewId: string) {
+    setSelectedView(viewId);
+    const view = views.find((entry) => entry.id === viewId);
+    if (!view) return;
+    setQuery(view.filters.query ?? "");
+    setTypeFilter(view.filters.type ?? "");
+    setPriorityFilter(view.filters.priority ?? "");
+    setAssigneeFilter(view.filters.assignee ?? "");
+    setGroupBy(view.filters.groupBy ?? "status");
+  }
+
+  async function saveView() {
+    const name = window.prompt("Name this view");
+    if (!name?.trim()) return;
+    const response = await fetch(`/api/session/projects/${projectId}/views`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        view_type: "BACKLOG",
+        filters: {
+          query,
+          type: typeFilter,
+          priority: priorityFilter,
+          assignee: assigneeFilter,
+          groupBy,
+        },
+      }),
+    }).catch(() => null);
+    if (!response?.ok) {
+      const payload = response ? ((await response.json().catch(() => ({}))) as { detail?: string }) : {};
+      setError(payload.detail ?? "That view could not be saved.");
+      return;
+    }
+    const payload = (await response.json()) as { data: SavedView };
+    setViews((current) => [...current, payload.data]);
+    setSelectedView(payload.data.id);
+  }
+
+  async function deleteView() {
+    if (!selectedView) return;
+    const response = await fetch(
+      `/api/session/projects/${projectId}/views/${selectedView}`,
+      { method: "DELETE" },
+    ).catch(() => null);
+    if (!response?.ok) {
+      setError("That view could not be deleted.");
+      return;
+    }
+    setViews((current) => current.filter((view) => view.id !== selectedView));
+    setSelectedView("");
+  }
 
   function displayName(userId: string | null): string {
     if (!userId) return "Unassigned";
@@ -435,6 +509,27 @@ export function BacklogClient({
           <option value="sprint">Group: sprint</option>
           <option value="none">Group: none</option>
         </select>
+        <select
+          value={selectedView}
+          onChange={(event) => applyView(event.target.value)}
+          className={CONTROL}
+          aria-label="Saved views"
+        >
+          <option value="">Saved views…</option>
+          {views.map((view) => (
+            <option key={view.id} value={view.id}>
+              {view.name}
+            </option>
+          ))}
+        </select>
+        <Button variant="ghost" size="sm" onClick={() => void saveView()}>
+          Save view
+        </Button>
+        {selectedView ? (
+          <Button variant="ghost" size="sm" onClick={() => void deleteView()}>
+            Delete view
+          </Button>
+        ) : null}
         <span className="text-[12px] text-[var(--text-tertiary)]">
           {visible.length} of {items.length} · {formatPoints(points(visible))} pts
         </span>
