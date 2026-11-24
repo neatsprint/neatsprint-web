@@ -100,6 +100,12 @@ function NavLink({ item }: { item: NavItem }) {
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
+      <a
+        href="#main"
+        className="sr-only z-50 rounded bg-[var(--primary-600)] px-3 py-2 text-white focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
+      >
+        Skip to content
+      </a>
       <aside className="hidden w-60 shrink-0 flex-col border-r bg-[var(--bg-surface)] md:flex">
         <div className="flex h-14 items-center gap-2 border-b px-5">
           <span className="grid size-7 place-items-center rounded-[var(--radius-md)] bg-[var(--primary-600)] text-sm font-bold text-white">
@@ -161,7 +167,30 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </header>
 
-        <main className="mx-auto w-full max-w-[1440px] flex-1 p-6">{children}</main>
+        <main id="main" className="mx-auto w-full max-w-[1440px] flex-1 p-4 md:p-6">
+          <nav
+            aria-label="Mobile"
+            className="mb-4 flex gap-1 overflow-x-auto border-b pb-2 text-[12px] md:hidden"
+          >
+            {([
+              ["Projects", "/projects"],
+              ["Timesheet", "/timesheet"],
+              ["Screenshots", "/me/screenshots"],
+              ["Reports", "/reports"],
+              ["Teams", "/teams"],
+              ["Monitoring", "/monitor"],
+            ] as const).map(([label, href]) => (
+              <Link
+                key={href}
+                href={href}
+                className="shrink-0 rounded-[var(--radius-md)] px-2 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          {children}
+        </main>
       </div>
     </div>
   );

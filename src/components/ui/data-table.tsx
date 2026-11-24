@@ -22,7 +22,7 @@ export function DataTable({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-e1)]",
+        "overflow-x-auto rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-e1)]",
         className,
       )}
     >

@@ -30,6 +30,13 @@ const reports = [
     icon: ShieldCheck,
     permission: "report:monitoring:view",
   },
+  {
+    href: "/reports/exports",
+    title: "Export centre",
+    description: "Queue CSV or PDF exports and download signed links.",
+    icon: BarChart3,
+    permission: "report:export",
+  },
 ] as const;
 
 export default async function ReportsHubPage() {
