@@ -3,6 +3,7 @@
 import {
   BarChart3,
   Clock3,
+  Eye,
   FolderKanban,
   LayoutDashboard,
   type LucideIcon,
@@ -34,13 +35,17 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard, enabled: true },
       { label: "Projects", href: "/projects", icon: FolderKanban, enabled: true },
-      { label: "Timesheet", icon: Clock3, enabled: false },
-      { label: "My screenshots", icon: ShieldCheck, enabled: false },
+      { label: "Timesheet", href: "/timesheet", icon: Clock3, enabled: true },
+      { label: "My screenshots", href: "/me/screenshots", icon: ShieldCheck, enabled: true },
+      { label: "Transparency", href: "/me/transparency", icon: Eye, enabled: true },
     ],
   },
   {
     section: "Team",
-    items: [{ label: "Teams", href: "/teams", icon: Users, enabled: true }],
+    items: [
+      { label: "Teams", href: "/teams", icon: Users, enabled: true },
+      { label: "Monitoring", href: "/monitor", icon: Eye, enabled: true },
+    ],
   },
   {
     section: "Insights",
