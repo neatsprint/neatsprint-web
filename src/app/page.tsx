@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   Circle,
   Clock3,
@@ -10,68 +11,256 @@ import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
+import { formatDuration } from "@/lib/utils";
 
-const checklist = [
-  { label: "Invite your team", done: false },
-  { label: "Create your first project", done: false },
-  { label: "Install the desktop agent", done: false },
-];
+export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
+type Project = { id: string; key: string; name: string };
+type Item = {
+  id: string;
+  key: string;
+  title: string;
+  status: string;
+  assignee_id: string | null;
+  estimate_points: number | null;
+  sprint_id: string | null;
+};
+type Sprint = { id: string; name: string; state: string };
+
+export default async function DashboardPage() {
+  const profile = await getProfile();
+  const token = await getAccessToken();
+  if (!profile || !token) {
+    return (
+      <AppShell>
+        <p className="text-[13px] text-[var(--text-secondary)]">
+          <Link href="/login" className="text-[var(--primary-600)]">
+            Sign in
+          </Link>{" "}
+          to see your workspace.
+        </p>
+      </AppShell>
+    );
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const canReports = profile.permissions.includes("report:productivity:view");
+  const canAgile = profile.permissions.includes("report:agile:view");
+
+  const [currentResponse, sheetResponse, shotsResponse, projectsResponse, teamsResponse] =
+    await Promise.all([
+      gatewayFetch("/work/current", {}, token),
+      gatewayFetch(`/work/timesheet?from=${today}&to=${today}`, {}, token),
+      gatewayFetch(`/monitor/screenshots/mine?from=${today}&to=${today}`, {}, token),
+      gatewayFetch("/tasks/projects", {}, token),
+      gatewayFetch("/teams", {}, token),
+    ]);
+  const current = currentResponse.ok
+    ? ((await currentResponse.json()) as { data: { state: string; elapsed_seconds: number } | null })
+        .data
+    : null;
+  const sheet = sheetResponse.ok
+    ? ((await sheetResponse.json()) as { data: { total_seconds: number } }).data
+    : { total_seconds: 0 };
+  const shots = shotsResponse.ok
+    ? ((await shotsResponse.json()) as { data: Array<{ state: string }> }).data
+    : [];
+  const projects = projectsResponse.ok
+    ? ((await projectsResponse.json()) as { data: Project[] }).data
+    : [];
+  const teams = teamsResponse.ok
+    ? ((await teamsResponse.json()) as { data: unknown[] }).data
+    : [];
+
+  const backlogs = await Promise.all(
+    projects.slice(0, 8).map(async (project) => {
+      const response = await gatewayFetch(
+        `/tasks/projects/${project.id}/backlog`,
+        {},
+        token,
+      );
+      if (!response.ok) return [] as Item[];
+      const payload = (await response.json()) as { data: Item[] };
+      return payload.data.map((item) => ({ ...item, project_id: project.id }) as Item & { project_id: string });
+    }),
+  );
+  const assigned = backlogs
+    .flat()
+    .filter((item) => item.assignee_id === profile.id && item.status !== "DONE");
+
+  let activeSprint: Sprint | null = null;
+  let sprintItems: Item[] = [];
+  for (const project of projects.slice(0, 4)) {
+    const response = await gatewayFetch(
+      `/tasks/sprints?project_id=${project.id}`,
+      {},
+      token,
+    );
+    if (!response.ok) continue;
+    const sprints = ((await response.json()) as { data: Sprint[] }).data;
+    const active = sprints.find((sprint) => sprint.state === "ACTIVE");
+    if (active) {
+      activeSprint = active;
+      const itemsResponse = await gatewayFetch(
+        `/tasks/sprints/${active.id}/items`,
+        {},
+        token,
+      );
+      if (itemsResponse.ok) {
+        sprintItems = ((await itemsResponse.json()) as { data: Item[] }).data;
+      }
+      break;
+    }
+  }
+
+  const completionResponse = canAgile
+    ? await gatewayFetch(`/reports/completion?from=${today}&to=${today}`, {}, token)
+    : null;
+  const completedToday =
+    completionResponse && completionResponse.ok
+      ? ((await completionResponse.json()) as { data: { completed: number } }).data.completed
+      : 0;
+
+  const captures = shots.filter((shot) => shot.state !== "DELETED").length;
+  const deletions = shots.filter((shot) => shot.state === "DELETED").length;
+  const sprintDone = sprintItems.filter((item) => item.status === "DONE").length;
+  const sprintTotal = sprintItems.length;
+  const sprintPoints = sprintItems.reduce(
+    (sum, item) => sum + (item.estimate_points ?? 0),
+    0,
+  );
+  const donePoints = sprintItems
+    .filter((item) => item.status === "DONE")
+    .reduce((sum, item) => sum + (item.estimate_points ?? 0), 0);
+
+  const checklist = [
+    { label: "Invite your team", done: teams.length > 0 },
+    { label: "Create your first project", done: projects.length > 0 },
+    { label: "Start a timer", done: sheet.total_seconds > 0 || current !== null },
+  ];
+
   return (
     <AppShell>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[13px] text-[var(--text-secondary)]">Foundation preview</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Your workspace</h1>
+          <p className="text-[13px] text-[var(--text-secondary)]">Your workspace</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+            Good to see you, {profile.full_name.split(" ")[0]}
+          </h1>
           <p className="mt-1 max-w-2xl text-[var(--text-secondary)]">
-            The shell, design tokens and service skeleton are in place. Planning, tracking and
-            reports arrive in the next milestones.
+            My day, sprint pulse and your privacy at a glance.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary">
-            <Clock3 size={16} />
-            Start timer
-          </Button>
-          <Button>
-            Create project
-            <ArrowRight size={16} />
-          </Button>
+          <Link href="/timesheet">
+            <Button variant="secondary">
+              <Clock3 size={16} />
+              Log time
+            </Button>
+          </Link>
+          {canReports ? (
+            <Link href="/reports">
+              <Button>
+                <BarChart3 size={16} />
+                Reports
+                <ArrowRight size={16} />
+              </Button>
+            </Link>
+          ) : null}
         </div>
       </div>
+
+      {checklist.some((item) => !item.done) ? (
+        <section className="mb-4 rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-e1)]">
+          <h2 className="flex items-center gap-2 text-[13px] font-semibold">
+            <Sparkles size={16} className="text-[var(--primary-600)]" />
+            Finish setup
+          </h2>
+          <ul className="mt-2 flex flex-wrap gap-4">
+            {checklist.map((item) => (
+              <li key={item.label} className="flex items-center gap-2 text-[13px]">
+                {item.done ? (
+                  <CheckCircle2 size={15} className="text-[var(--success-600)]" />
+                ) : (
+                  <Circle size={15} className="text-[var(--text-tertiary)]" />
+                )}
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
           <h2 className="text-base font-semibold">My day</h2>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            Your timer, assigned work and logged time will appear here.
-          </p>
-          <div className="mt-4 rounded-[var(--radius-md)] border border-dashed p-4">
-            <p className="text-sm font-medium">No timer running</p>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-              Start tracking from the desktop agent or the timer pill.
-            </p>
+          <div className="mt-3 rounded-[var(--radius-md)] border border-dashed p-4">
+            {current ? (
+              <>
+                <p className="text-sm font-medium">
+                  {current.state === "PAUSED" ? "Timer paused" : "Timer running"}
+                </p>
+                <p className="mt-1 text-xl font-semibold tabular">
+                  {formatDuration(current.elapsed_seconds)}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium">No timer running</p>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  Start tracking from the desktop agent or log time manually.
+                </p>
+              </>
+            )}
           </div>
           <p className="mt-3 text-xs text-[var(--text-tertiary)]">
-            0m tracked today · 0 captures
+            {formatDuration(sheet.total_seconds)} tracked today · {assigned.length} assigned items
           </p>
+          {assigned.length > 0 ? (
+            <ul className="mt-3 space-y-1 text-[12px]">
+              {assigned.slice(0, 3).map((item) => (
+                <li key={item.id} className="flex justify-between gap-2">
+                  <span className="mono text-[var(--text-tertiary)]">{item.key}</span>
+                  <span className="truncate">{item.title}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
 
         <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
           <h2 className="text-base font-semibold">Sprint pulse</h2>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            Active sprint progress, blocked items and days remaining.
-          </p>
-          <div className="mt-4 rounded-[var(--radius-md)] border border-dashed p-4">
-            <p className="text-sm font-medium">No active sprint</p>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-              Create a project and plan a sprint to see velocity and burndown.
+          {activeSprint ? (
+            <>
+              <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
+                {activeSprint.name} · {sprintDone}/{sprintTotal} items done
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                <div
+                  className="h-full bg-[var(--primary-600)]"
+                  style={{
+                    width: `${sprintPoints ? Math.round((donePoints / sprintPoints) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-[12px] text-[var(--text-tertiary)]">
+                {donePoints} of {sprintPoints} points completed
+              </p>
+            </>
+          ) : (
+            <div className="mt-3 rounded-[var(--radius-md)] border border-dashed p-4">
+              <p className="text-sm font-medium">No active sprint</p>
+              <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                Plan a sprint from a project to see progress here.
+              </p>
+            </div>
+          )}
+          {canAgile ? (
+            <p className="mt-3 text-[12px] text-[var(--text-tertiary)]">
+              {completedToday} items completed today
             </p>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-            <div className="h-full w-0 bg-[var(--primary-600)]" />
-          </div>
+          ) : null}
         </section>
 
         <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
@@ -79,81 +268,40 @@ export default function DashboardPage() {
             <ShieldCheck size={18} className="text-[var(--success-600)]" />
             Privacy
           </h2>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            You see every capture before your team does. Deleting one is permanent and leaves only
-            an audit tombstone.
+          <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
+            {captures} captures today · {deletions} deleted by you
           </p>
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-3">
-              <dt className="text-xs text-[var(--text-secondary)]">Captured today</dt>
-              <dd className="mt-1 text-xl font-semibold tabular">0</dd>
-            </div>
-            <div className="rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-3">
-              <dt className="text-xs text-[var(--text-secondary)]">Deleted</dt>
-              <dd className="mt-1 text-xl font-semibold tabular">0</dd>
-            </div>
-          </dl>
-          <p className="mt-3 text-xs text-[var(--text-tertiary)]">
-            Review window: 24 hours · capture only while a timer runs.
+          <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">
+            Screenshots pause when your timer stops. Review and delete them within the privacy
+            window.
           </p>
-        </section>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Get set up</h2>
-            <span className="text-xs text-[var(--text-tertiary)]">0 of 3 complete</span>
-          </div>
-          <ul className="mt-3 divide-y">
-            {checklist.map((item) => (
-              <li key={item.label} className="flex items-center gap-3 py-3">
-                {item.done ? (
-                  <CheckCircle2 size={18} className="text-[var(--success-600)]" />
-                ) : (
-                  <Circle size={18} className="text-[var(--text-tertiary)]" />
-                )}
-                <span className={item.done ? "text-[var(--text-tertiary)] line-through" : ""}>
-                  {item.label}
-                </span>
-                <ArrowRight size={16} className="ml-auto text-[var(--text-tertiary)]" />
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <Sparkles size={18} className="text-[var(--accent-500)]" />
-            Build status
-          </h2>
-          <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-            Milestone <span className="font-medium text-[var(--text-primary)]">M0</span> —
-            foundations.
-          </p>
-          <ul className="mt-3 space-y-2 text-[13px]">
-            <li className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-[var(--success-600)]" />
-              Repositories and submodules
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-[var(--success-600)]" />
-              Contracts and shared library
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-[var(--success-600)]" />
-              Design tokens and app shell
-            </li>
-          </ul>
           <Link
-            href="/design"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--primary-600)] hover:text-[var(--primary-700)]"
+            href="/me/screenshots"
+            className="mt-3 inline-flex text-[13px] font-medium text-[var(--primary-600)]"
           >
-            Open the design page
-            <ArrowRight size={15} />
+            Review my screenshots
           </Link>
         </section>
       </div>
+
+      {canReports ? (
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {([
+            ["/reports/time", "Time report", "Hours by day, project and person"],
+            ["/reports/velocity", "Velocity & burndown", "Sprint delivery trend"],
+            ["/reports/monitoring", "Monitoring summary", "Captures, deletions and activity"],
+          ] as const).map(([href, title, description]) => (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-e1)] transition-colors hover:bg-[var(--bg-subtle)]"
+            >
+              <p className="text-[13px] font-semibold">{title}</p>
+              <p className="mt-1 text-[12px] text-[var(--text-secondary)]">{description}</p>
+            </Link>
+          ))}
+        </div>
+      ) : null}
     </AppShell>
   );
 }
