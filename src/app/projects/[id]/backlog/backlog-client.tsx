@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   PRIORITIES,
@@ -140,6 +141,14 @@ export function BacklogClient({
   const [editingTitle, setEditingTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingBulk, setPendingBulk] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState("");
+  const [newType, setNewType] = useState<(typeof TYPES)[number]>("TASK");
+  const [newPriority, setNewPriority] = useState<(typeof PRIORITIES)[number]>("MEDIUM");
+  const [newEstimate, setNewEstimate] = useState("");
+  const [newDescription, setNewDescription] = useState("");
 
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
   const cancelEdit = useRef(false);
@@ -241,6 +250,51 @@ export function BacklogClient({
     }
     setViews((current) => current.filter((view) => view.id !== selectedView));
     setSelectedView("");
+  }
+
+  function openCreate() {
+    setNewTitle("");
+    setNewType("TASK");
+    setNewPriority("MEDIUM");
+    setNewEstimate("");
+    setNewDescription("");
+    setCreateError(null);
+    setCreating(true);
+  }
+
+  async function submitCreate() {
+    const title = newTitle.trim();
+    if (!title || saving) return;
+    const estimate = newEstimate === "" ? null : Number(newEstimate);
+    if (estimate !== null && Number.isNaN(estimate)) {
+      setCreateError("Enter a valid estimate.");
+      return;
+    }
+    setSaving(true);
+    setCreateError(null);
+    const response = await fetch(`/api/session/projects/${projectId}/backlog`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: projectId,
+        type: newType,
+        title,
+        priority: newPriority,
+        estimate_points: estimate,
+        description: newDescription.trim() || null,
+      }),
+    }).catch(() => null);
+    setSaving(false);
+    if (!response?.ok) {
+      const payload = response
+        ? ((await response.json().catch(() => ({}))) as { detail?: string })
+        : {};
+      setCreateError(payload.detail ?? "That item could not be created.");
+      return;
+    }
+    const payload = (await response.json()) as { data: BacklogItem };
+    setItems((current) => [...current, payload.data]);
+    setCreating(false);
   }
 
   function displayName(userId: string | null): string {
@@ -528,6 +582,11 @@ export function BacklogClient({
         {selectedView ? (
           <Button variant="ghost" size="sm" onClick={() => void deleteView()}>
             Delete view
+          </Button>
+        ) : null}
+        {canEdit ? (
+          <Button size="sm" onClick={openCreate}>
+            New item
           </Button>
         ) : null}
         <span className="text-[12px] text-[var(--text-tertiary)]">
@@ -879,6 +938,145 @@ export function BacklogClient({
             })}
         </DataTable>
       )}
+
+      {creating ? (
+        <Drawer
+          title="New backlog item"
+          subtitle="Backlog"
+          onClose={() => setCreating(false)}
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setCreating(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={saving || !newTitle.trim()}
+                onClick={() => void submitCreate()}
+              >
+                {saving ? "Creating…" : "Create item"}
+              </Button>
+            </div>
+          }
+        >
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitCreate();
+            }}
+          >
+            <div>
+              <label
+                htmlFor="new-item-title"
+                className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
+              >
+                Title
+              </label>
+              <input
+                id="new-item-title"
+                autoFocus
+                maxLength={240}
+                value={newTitle}
+                onChange={(event) => setNewTitle(event.target.value)}
+                className="h-9 w-full rounded-[var(--radius-md)] border bg-[var(--bg-surface)] px-2 text-[13px]"
+                placeholder="What needs to be done?"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="new-item-type"
+                  className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
+                >
+                  Type
+                </label>
+                <select
+                  id="new-item-type"
+                  value={newType}
+                  onChange={(event) =>
+                    setNewType(event.target.value as (typeof TYPES)[number])
+                  }
+                  className={cn(CONTROL, "w-full")}
+                >
+                  {TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  htmlFor="new-item-priority"
+                  className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
+                >
+                  Priority
+                </label>
+                <select
+                  id="new-item-priority"
+                  value={newPriority}
+                  onChange={(event) =>
+                    setNewPriority(event.target.value as (typeof PRIORITIES)[number])
+                  }
+                  className={cn(CONTROL, "w-full")}
+                >
+                  {PRIORITIES.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {priority}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="new-item-estimate"
+                className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
+              >
+                Estimate (points)
+              </label>
+              <input
+                id="new-item-estimate"
+                type="number"
+                min={0}
+                max={1000}
+                step={0.5}
+                value={newEstimate}
+                onChange={(event) => setNewEstimate(event.target.value)}
+                className="h-9 w-32 rounded-[var(--radius-md)] border bg-[var(--bg-surface)] px-2 text-[13px]"
+                placeholder="—"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="new-item-description"
+                className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]"
+              >
+                Description
+              </label>
+              <textarea
+                id="new-item-description"
+                rows={5}
+                maxLength={20000}
+                value={newDescription}
+                onChange={(event) => setNewDescription(event.target.value)}
+                className="w-full rounded-[var(--radius-md)] border bg-[var(--bg-surface)] px-2 py-2 text-[13px]"
+                placeholder="Context, acceptance criteria, links…"
+              />
+            </div>
+
+            {createError ? (
+              <p role="alert" className="text-[13px] text-[var(--danger-600)]">
+                {createError}
+              </p>
+            ) : null}
+          </form>
+        </Drawer>
+      ) : null}
     </div>
   );
 }

@@ -125,6 +125,40 @@ describe("BacklogClient", () => {
     expect(screen.getByText("Renamed task")).toBeTruthy();
   });
 
+  it("creates a backlog item from the drawer", async () => {
+    const created: BacklogItem = {
+      id: "3",
+      key: "AUTH-3",
+      type: "TASK",
+      title: "New task",
+      status: "TODO",
+      priority: "MEDIUM",
+      estimate_points: null,
+      assignee_id: null,
+      sprint_id: null,
+    };
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/views")) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: created }) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderBacklog();
+
+    fireEvent.click(screen.getByRole("button", { name: "New item" }));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "New task" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create item" }));
+
+    await waitFor(() => expect(screen.getByText("New task")).toBeTruthy());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/session/projects/p1/backlog",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("shows the empty-backlog state", () => {
     renderBacklog([]);
     expect(screen.getByText("This backlog is empty")).toBeTruthy();
