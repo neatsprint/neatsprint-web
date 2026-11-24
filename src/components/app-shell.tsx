@@ -8,14 +8,15 @@ import {
   LayoutDashboard,
   type LucideIcon,
   LogIn,
+  LogOut,
   Settings,
   ShieldCheck,
   Timer,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { NotificationBell } from "@/components/notification-bell";
 import { GlobalSearch } from "@/components/global-search";
@@ -97,7 +98,38 @@ function NavLink({ item }: { item: NavItem }) {
   );
 }
 
+type ShellProfile = {
+  full_name: string;
+  email: string;
+  roles: string[];
+};
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] ?? "";
+  const second = parts[1] ?? "";
+  return ((first[0] ?? "") + (second[0] ?? "")).toUpperCase() || "?";
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const [profile, setProfile] = useState<ShellProfile | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/session/me")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { data: ShellProfile } | null) => setProfile(payload?.data ?? null))
+      .catch(() => setProfile(null))
+      .finally(() => setLoaded(true));
+  }, []);
+
+  async function signOut() {
+    await fetch("/api/session/logout", { method: "POST" }).catch(() => null);
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <div className="flex min-h-screen">
       <a
@@ -154,17 +186,36 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <ThemeToggle />
 
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-          >
-            <LogIn size={15} />
-            Sign in
-          </Link>
-
-          <span className="grid size-8 place-items-center rounded-full bg-[var(--primary-100)] text-[12px] font-semibold text-[var(--primary-700)]">
-            LF
-          </span>
+          {profile ? (
+            <>
+              <span className="hidden max-w-40 truncate text-[12px] text-[var(--text-secondary)] lg:inline">
+                {profile.full_name}
+              </span>
+              <span
+                title={profile.email}
+                className="grid size-8 place-items-center rounded-full bg-[var(--primary-100)] text-[12px] font-semibold text-[var(--primary-700)]"
+              >
+                {initials(profile.full_name)}
+              </span>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                aria-label="Sign out"
+                title="Sign out"
+                className="rounded-[var(--radius-md)] p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+              >
+                <LogOut size={16} />
+              </button>
+            </>
+          ) : loaded ? (
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+            >
+              <LogIn size={15} />
+              Sign in
+            </Link>
+          ) : null}
         </header>
 
         <main id="main" className="mx-auto w-full max-w-[1440px] flex-1 p-4 md:p-6">

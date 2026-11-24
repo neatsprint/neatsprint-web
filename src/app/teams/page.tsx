@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { CreateTeamForm } from "@/app/teams/create-team-form";
+import { TeamCard, type TeamMember, type TeamUser } from "@/app/teams/team-card";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -21,14 +22,22 @@ export default async function TeamsPage() {
     : [];
   const loadFailed = !response.ok;
 
-  const memberships = await Promise.all(
-    teams.map(async (team) => {
-      const members = await gatewayFetch(`/teams/${team.id}/members`, {}, token);
-      if (!members.ok) return 0;
-      const payload = (await members.json()) as { data: unknown[] };
-      return payload.data.length;
-    }),
-  );
+  const [membersByTeam, usersResponse] = await Promise.all([
+    Promise.all(
+      teams.map(async (team) => {
+        const members = await gatewayFetch(`/teams/${team.id}/members`, {}, token);
+        if (!members.ok) return [] as TeamMember[];
+        const payload = (await members.json()) as { data: TeamMember[] };
+        return payload.data;
+      }),
+    ),
+    gatewayFetch("/iam/users", {}, token),
+  ]);
+
+  const users: TeamUser[] = usersResponse.ok
+    ? ((await usersResponse.json()) as { data: TeamUser[] }).data
+    : [];
+  const canManage = profile.permissions.includes("team:member:manage");
 
   return (
     <AppShell>
@@ -49,23 +58,13 @@ export default async function TeamsPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {teams.map((team, index) => (
-          <section
+          <TeamCard
             key={team.id}
-            className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">{team.name}</h2>
-              <span className="rounded-full border px-2 py-0.5 text-[11px]">
-                {memberships[index] ?? 0} members
-              </span>
-            </div>
-            <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
-              {team.description || "No description"}
-            </p>
-            <p className="mt-4 text-[12px] text-[var(--text-tertiary)]">
-              Lead: {team.lead_id ? "assigned" : "unassigned"}
-            </p>
-          </section>
+            team={team}
+            initialMembers={membersByTeam[index] ?? []}
+            users={users}
+            canManage={canManage}
+          />
         ))}
         {teams.length === 0 && !loadFailed ? (
           <EmptyState
