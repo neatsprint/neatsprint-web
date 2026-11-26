@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "img-src 'self' data: blob: http://localhost:9000 http://localhost:9100",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://accounts.google.com",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com/gsi/client",
               "connect-src 'self' http://localhost:8000 http://localhost:8100 https://accounts.google.com ws://localhost:3000",
               "frame-src 'self' https://accounts.google.com/gsi/",

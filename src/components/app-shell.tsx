@@ -111,10 +111,19 @@ function initials(name: string): string {
   return ((first[0] ?? "") + (second[0] ?? "")).toUpperCase() || "?";
 }
 
+function formatElapsed(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const h = String(Math.floor(total / 3600)).padStart(2, "0");
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [profile, setProfile] = useState<ShellProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [timer, setTimer] = useState<{ elapsed_seconds: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/session/me")
@@ -122,6 +131,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       .then((payload: { data: ShellProfile } | null) => setProfile(payload?.data ?? null))
       .catch(() => setProfile(null))
       .finally(() => setLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/session/work/current")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload: { data: { elapsed_seconds?: number } | null } | null) =>
+          setTimer(
+            payload?.data ? { elapsed_seconds: payload.data.elapsed_seconds ?? 0 } : null,
+          ),
+        )
+        .catch(() => setTimer(null));
+    void load();
+    const interval = setInterval(load, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   async function signOut() {
@@ -177,10 +201,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="flex h-14 items-center gap-3 border-b bg-[var(--bg-surface)] px-4">
           <GlobalSearch />
 
-          <span className="hidden items-center gap-2 rounded-full border px-3 py-1 text-[12px] text-[var(--text-secondary)] sm:flex">
-            <Timer size={14} />
-            No timer running
-          </span>
+          {timer ? (
+            <Link
+              href="/timesheet"
+              className="hidden items-center gap-2 rounded-full border px-3 py-1 text-[12px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] sm:flex"
+            >
+              <Timer size={14} className="text-[var(--warning-500)]" />
+              {formatElapsed(timer.elapsed_seconds ?? 0)}
+            </Link>
+          ) : (
+            <span className="hidden items-center gap-2 rounded-full border px-3 py-1 text-[12px] text-[var(--text-secondary)] sm:flex">
+              <Timer size={14} />
+              No timer running
+            </span>
+          )}
 
           <NotificationBell />
 
