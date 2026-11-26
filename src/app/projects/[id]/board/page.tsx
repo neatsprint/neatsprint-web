@@ -81,6 +81,12 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
           >
             Planning
           </Link>
+          <Link
+            href={`/projects/${id}/settings`}
+            className="rounded-[var(--radius-md)] px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+          >
+            Settings
+          </Link>
         </nav>
       </div>
 

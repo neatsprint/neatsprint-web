@@ -20,13 +20,17 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; " +
-              "img-src 'self' data: blob: http://localhost:9000; " +
-              "style-src 'self' 'unsafe-inline'; " +
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-              "connect-src 'self' http://localhost:8000 ws://localhost:3000; " +
-              "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            value: [
+              "default-src 'self'",
+              "img-src 'self' data: blob: http://localhost:9000 http://localhost:9100",
+              "style-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com/gsi/client",
+              "connect-src 'self' http://localhost:8000 http://localhost:8100 https://accounts.google.com ws://localhost:3000",
+              "frame-src 'self' https://accounts.google.com/gsi/",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; ") + ";",
           },
         ],
       },

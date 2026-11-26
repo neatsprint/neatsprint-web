@@ -50,7 +50,7 @@ const nav: Array<{ section: string; items: NavItem[] }> = [
   },
   {
     section: "Insights",
-    items: [{ label: "Reports", icon: BarChart3, enabled: false }],
+    items: [{ label: "Reports", href: "/reports", icon: BarChart3, enabled: true }],
   },
   {
     section: "Admin",

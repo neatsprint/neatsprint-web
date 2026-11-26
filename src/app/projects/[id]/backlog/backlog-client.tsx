@@ -113,6 +113,7 @@ export function BacklogClient({
   initialItems,
   sprints,
   users,
+  canCreate,
   canEdit,
   canTransition,
   canAssign,
@@ -122,6 +123,7 @@ export function BacklogClient({
   initialItems: BacklogItem[];
   sprints: Sprint[];
   users: User[];
+  canCreate?: boolean;
   canEdit: boolean;
   canTransition: boolean;
   canAssign: boolean;
@@ -584,7 +586,7 @@ export function BacklogClient({
             Delete view
           </Button>
         ) : null}
-        {canEdit ? (
+        {canCreate !== false ? (
           <Button size="sm" onClick={openCreate}>
             New item
           </Button>

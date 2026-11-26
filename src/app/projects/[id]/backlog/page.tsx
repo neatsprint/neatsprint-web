@@ -72,6 +72,12 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
           >
             Planning
           </Link>
+          <Link
+            href={`/projects/${id}/settings`}
+            className="rounded-[var(--radius-md)] px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+          >
+            Settings
+          </Link>
         </nav>
       </div>
 
@@ -84,6 +90,7 @@ export default async function BacklogPage({ params }: { params: Promise<{ id: st
         initialItems={items}
         sprints={sprints}
         users={users}
+        canCreate={profile.permissions.includes("task:item:create")}
         canEdit={profile.permissions.includes("task:item:edit")}
         canTransition={profile.permissions.includes("task:item:transition")}
         canAssign={profile.permissions.includes("task:item:assign")}
