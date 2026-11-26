@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { NotificationBell } from "@/components/notification-bell";
@@ -120,7 +120,6 @@ function formatElapsed(seconds: number): string {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [profile, setProfile] = useState<ShellProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [timer, setTimer] = useState<{ elapsed_seconds: number } | null>(null);
@@ -150,8 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await fetch("/api/session/logout", { method: "POST" }).catch(() => null);
-    router.push("/login");
-    router.refresh();
+    window.location.assign("/login");
   }
 
   return (

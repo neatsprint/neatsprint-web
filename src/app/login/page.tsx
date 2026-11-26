@@ -1,14 +1,12 @@
 "use client";
 
 import { ArrowRight, Loader2, LockKeyhole, Mail } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { GoogleLogin } from "@/components/google-login";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("owner@acme-labs.com");
   const [password, setPassword] = useState("NeatSprint!2026");
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +27,7 @@ export default function LoginPage() {
         setError(body.detail ?? "Sign in failed. Check your email and password.");
         return;
       }
-      router.push("/admin/users");
-      router.refresh();
+      window.location.assign("/admin/users");
     } catch {
       setError("Cannot reach the server. Try again.");
     } finally {
