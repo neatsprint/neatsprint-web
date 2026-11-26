@@ -3,7 +3,7 @@
 import { CalendarPlus, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
@@ -89,6 +89,13 @@ export function TimesheetClient({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Entry times are formatted in the viewer's timezone, which the server cannot know.
+  // Render them only after mount so the first client render matches the server HTML.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const itemMap = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
   const visibleItems = useMemo(
@@ -277,7 +284,9 @@ export function TimesheetClient({
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           {days.map((day) => {
-            const dayEntries = entries.filter((entry) => localDate(entry.started_at) === day);
+            const dayEntries = mounted
+              ? entries.filter((entry) => localDate(entry.started_at) === day)
+              : [];
             const dayTotal = dayEntries.reduce(
               (sum, entry) => sum + entry.duration_seconds,
               0,
@@ -290,7 +299,7 @@ export function TimesheetClient({
                 <header className="mb-2 flex items-center justify-between">
                   <h2 className="text-[12px] font-semibold">{day.slice(5)}</h2>
                   <span className="text-[11px] text-[var(--text-tertiary)]">
-                    {formatDuration(dayTotal)}
+                    {mounted ? formatDuration(dayTotal) : null}
                   </span>
                 </header>
                 <div className="space-y-2">
@@ -340,9 +349,11 @@ export function TimesheetClient({
                     );
                   })}
                   {dayEntries.length === 0 ? (
-                    <p className="py-4 text-center text-[11px] text-[var(--text-tertiary)]">
-                      No time
-                    </p>
+                    mounted ? (
+                      <p className="py-4 text-center text-[11px] text-[var(--text-tertiary)]">
+                        No time
+                      </p>
+                    ) : null
                   ) : null}
                 </div>
               </section>
