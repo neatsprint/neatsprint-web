@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, Loader2, LockKeyhole, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { GoogleLogin } from "@/components/google-login";
@@ -11,6 +11,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("NeatSprint!2026");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("google_error");
+    if (!reason) return;
+    setError(
+      reason === "csrf"
+        ? "Google sign-in could not be verified. Please try again."
+        : "Google sign-in failed. Check the Google OAuth origin/redirect configuration.",
+    );
+  }, []);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -67,7 +77,7 @@ export default function LoginPage() {
           </p>
 
           <div className="mt-6">
-            <GoogleLogin onError={setError} />
+            <GoogleLogin />
           </div>
 
           <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">

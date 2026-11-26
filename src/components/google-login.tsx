@@ -11,7 +11,9 @@ declare global {
         id: {
           initialize: (options: {
             client_id: string;
-            callback: (response: CredentialResponse) => void;
+            callback?: (response: CredentialResponse) => void;
+            ux_mode?: "popup" | "redirect";
+            login_uri?: string;
           }) => void;
           renderButton: (element: HTMLElement, options: Record<string, string>) => void;
         };
@@ -20,7 +22,7 @@ declare global {
   }
 }
 
-export function GoogleLogin({ onError }: { onError: (message: string) => void }) {
+export function GoogleLogin() {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
@@ -54,19 +56,8 @@ export function GoogleLogin({ onError }: { onError: (message: string) => void })
     if (!ready || !clientId || !window.google || !ref.current) return;
     window.google.accounts.id.initialize({
       client_id: clientId,
-      callback: async (response) => {
-        if (!response.credential) return;
-        const result = await fetch("/api/session/login/google", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_token: response.credential }),
-        }).catch(() => null);
-        if (!result || !result.ok) {
-          onError("Google sign-in failed. Ask your admin for an invitation.");
-          return;
-        }
-        window.location.assign("/admin/users");
-      },
+      ux_mode: "redirect",
+      login_uri: `${window.location.origin}/api/session/login/google/redirect`,
     });
     window.google.accounts.id.renderButton(ref.current, {
       theme: "outline",
@@ -74,7 +65,7 @@ export function GoogleLogin({ onError }: { onError: (message: string) => void })
       width: "320",
       text: "continue_with",
     });
-  }, [ready, clientId, onError]);
+  }, [ready, clientId]);
 
   if (!clientId) return null;
   return <div ref={ref} className="flex justify-center" />;
