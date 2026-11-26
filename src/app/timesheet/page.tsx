@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { TimesheetClient, type TimesheetEntry } from "@/app/timesheet/timesheet-client";
+import {
+  TimesheetClient,
+  type SheetSprint,
+  type TimesheetEntry,
+} from "@/app/timesheet/timesheet-client";
 import { AppShell } from "@/components/app-shell";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
@@ -10,11 +14,13 @@ import { addDays, mondayOf, weekDays } from "@/lib/week";
 export const dynamic = "force-dynamic";
 
 type Project = { id: string; key: string; name: string };
-type BacklogItem = { id: string; key: string; title: string };
+type BacklogItem = { id: string; key: string; title: string; sprint_id: string | null };
+type SprintSummary = { id: string; name: string; state: string };
 type SheetItem = {
   id: string;
   key: string;
   title: string;
+  sprint_id: string | null;
   project_id: string;
   project_key: string;
   project_name: string;
@@ -35,9 +41,10 @@ export default async function TimesheetPage({
   const from = start.toISOString().slice(0, 10);
   const to = end.toISOString().slice(0, 10);
 
-  const [sheetResponse, projectsResponse] = await Promise.all([
+  const [sheetResponse, projectsResponse, policyResponse] = await Promise.all([
     gatewayFetch(`/work/timesheet?from=${from}&to=${to}`, {}, token),
     gatewayFetch("/tasks/projects", {}, token),
+    gatewayFetch("/work/policy", {}, token),
   ]);
   if (sheetResponse.status === 401) redirect("/login");
 
@@ -47,6 +54,10 @@ export default async function TimesheetPage({
   const projects: Project[] = projectsResponse.ok
     ? ((await projectsResponse.json()) as { data: Project[] }).data
     : [];
+  const allowWithoutSprint = policyResponse.ok
+    ? ((await policyResponse.json()) as { data: { allow_time_without_sprint: boolean } }).data
+        .allow_time_without_sprint
+    : true;
   const backlogs = await Promise.all(
     projects.map(async (project) => {
       const response = await gatewayFetch(`/tasks/projects/${project.id}/backlog`, {}, token);
@@ -61,6 +72,24 @@ export default async function TimesheetPage({
     }),
   );
   const items = backlogs.flat().sort((a, b) => a.key.localeCompare(b.key));
+  const sprintLists = await Promise.all(
+    projects.map(async (project) => {
+      const response = await gatewayFetch(`/tasks/sprints?project_id=${project.id}`, {}, token);
+      if (!response.ok) return [] as SheetSprint[];
+      const payload = (await response.json()) as { data: SprintSummary[] };
+      return payload.data
+        .filter((sprint) => sprint.state !== "COMPLETED")
+        .map((sprint) => ({
+          id: sprint.id,
+          name: sprint.name,
+          state: sprint.state,
+          project_key: project.key,
+        }));
+    }),
+  );
+  const sprints = sprintLists
+    .flat()
+    .sort((a, b) => Number(b.state === "ACTIVE") - Number(a.state === "ACTIVE"));
 
   return (
     <AppShell>
@@ -88,6 +117,8 @@ export default async function TimesheetPage({
         days={weekDays(start).map((day) => day.toISOString().slice(0, 10))}
         entries={entries}
         items={items}
+        sprints={sprints}
+        allowWithoutSprint={allowWithoutSprint}
         canWrite={profile.permissions.includes("work:log:write")}
         canExport={profile.permissions.includes("report:export")}
       />

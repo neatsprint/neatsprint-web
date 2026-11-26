@@ -18,6 +18,7 @@ export type TimesheetEntry = {
   user_id: string;
   item_id: string | null;
   project_id: string | null;
+  sprint_id: string | null;
   started_at: string;
   ended_at: string;
   duration_seconds: number;
@@ -26,13 +27,21 @@ export type TimesheetEntry = {
   client_id: string;
 };
 
-type SheetItem = {
+export type SheetItem = {
   id: string;
   key: string;
   title: string;
+  sprint_id: string | null;
   project_id: string;
   project_key: string;
   project_name: string;
+};
+
+export type SheetSprint = {
+  id: string;
+  name: string;
+  state: string;
+  project_key: string;
 };
 
 function pad(value: number): string {
@@ -54,6 +63,8 @@ export function TimesheetClient({
   days,
   entries,
   items,
+  sprints,
+  allowWithoutSprint,
   canWrite,
   canExport,
 }: {
@@ -61,13 +72,16 @@ export function TimesheetClient({
   days: string[];
   entries: TimesheetEntry[];
   items: SheetItem[];
+  sprints: SheetSprint[];
+  allowWithoutSprint: boolean;
   canWrite: boolean;
   canExport: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TimesheetEntry | null>(null);
-  const [itemId, setItemId] = useState(items[0]?.id ?? "");
+  const [sprintId, setSprintId] = useState("");
+  const [itemId, setItemId] = useState("");
   const [date, setDate] = useState(weekStart);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
@@ -77,15 +91,25 @@ export function TimesheetClient({
   const [exporting, setExporting] = useState(false);
 
   const itemMap = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+  const visibleItems = useMemo(
+    () => (sprintId ? items.filter((item) => item.sprint_id === sprintId) : items),
+    [items, sprintId],
+  );
   const total = entries.reduce((sum, entry) => sum + entry.duration_seconds, 0);
   const start = new Date(`${weekStart}T00:00:00Z`);
   const end = isoDate(addDays(start, 6));
   const previousWeek = isoDate(addDays(start, -7));
   const nextWeek = isoDate(addDays(start, 7));
+  const noSprintAvailable = !allowWithoutSprint && sprints.length === 0;
 
   function openCreate() {
+    const defaultSprint = allowWithoutSprint ? "" : (sprints[0]?.id ?? "");
     setEditing(null);
-    setItemId(items[0]?.id ?? "");
+    setSprintId(defaultSprint);
+    setItemId(
+      (defaultSprint ? items.filter((item) => item.sprint_id === defaultSprint) : items)[0]?.id ??
+        "",
+    );
     setDate(weekStart);
     setStartTime("09:00");
     setEndTime("10:00");
@@ -94,8 +118,17 @@ export function TimesheetClient({
     setOpen(true);
   }
 
+  function changeSprint(value: string) {
+    setSprintId(value);
+    const stillVisible = value
+      ? items.some((item) => item.id === itemId && item.sprint_id === value)
+      : itemId !== "";
+    if (!stillVisible) setItemId("");
+  }
+
   function openEdit(entry: TimesheetEntry) {
     setEditing(entry);
+    setSprintId(entry.sprint_id ?? "");
     setItemId(entry.item_id ?? "");
     setDate(localDate(entry.started_at));
     setStartTime(localTime(entry.started_at));
@@ -116,9 +149,14 @@ export function TimesheetClient({
       setError("The end time must follow the start time.");
       return;
     }
+    if (!allowWithoutSprint && !sprintId) {
+      setError("Choose a sprint to log time.");
+      return;
+    }
     const selected = itemMap.get(itemId);
     const body = {
       item_id: itemId || null,
+      sprint_id: sprintId || null,
       project_id: selected?.project_id ?? null,
       started_at: startAt.toISOString(),
       ended_at: endAt.toISOString(),
@@ -321,6 +359,23 @@ export function TimesheetClient({
         >
           <div className="space-y-4">
             <label className="block text-[13px]">
+              <span className="mb-1 block text-[var(--text-secondary)]">
+                Sprint{allowWithoutSprint ? "" : " (required)"}
+              </span>
+              <select
+                value={sprintId}
+                onChange={(event) => changeSprint(event.target.value)}
+                className="h-10 w-full rounded-[var(--radius-md)] border bg-[var(--bg-surface)] px-2 text-[13px]"
+              >
+                {allowWithoutSprint ? <option value="">No sprint</option> : null}
+                {sprints.map((sprint) => (
+                  <option key={sprint.id} value={sprint.id}>
+                    {sprint.name} · {sprint.project_key}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[13px]">
               <span className="mb-1 block text-[var(--text-secondary)]">Task</span>
               <select
                 value={itemId}
@@ -328,13 +383,24 @@ export function TimesheetClient({
                 className="h-10 w-full rounded-[var(--radius-md)] border bg-[var(--bg-surface)] px-2 text-[13px]"
               >
                 <option value="">No task</option>
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.key} · {item.title}
                   </option>
                 ))}
               </select>
+              {sprintId && visibleItems.length === 0 ? (
+                <span className="mt-1 block text-xs text-[var(--text-tertiary)]">
+                  No tasks are in this sprint yet.
+                </span>
+              ) : null}
             </label>
+            {noSprintAvailable ? (
+              <InlineAlert>
+                No sprint is available. Ask a project manager to create a sprint before logging
+                time.
+              </InlineAlert>
+            ) : null}
             <label className="block text-[13px]">
               <span className="mb-1 block text-[var(--text-secondary)]">Date</span>
               <input
@@ -378,7 +444,7 @@ export function TimesheetClient({
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button disabled={saving} onClick={() => void submit()}>
+              <Button disabled={saving || noSprintAvailable} onClick={() => void submit()}>
                 {saving ? "Saving…" : editing ? "Save changes" : "Add entry"}
               </Button>
             </div>

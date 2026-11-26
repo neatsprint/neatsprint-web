@@ -13,6 +13,7 @@ export type SettingsValues = {
   screenshot_interval_max: number;
   retention_days: number;
   aggregation_threshold: number;
+  allow_time_without_sprint: boolean;
 };
 
 export function SettingsForm({
@@ -146,6 +147,22 @@ export function SettingsForm({
           </span>
         </label>
       </div>
+
+      <label className="flex items-start gap-3 text-[13px] font-medium">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4"
+          checked={values.allow_time_without_sprint}
+          disabled={!canEdit}
+          onChange={(event) => update("allow_time_without_sprint", event.target.checked)}
+        />
+        <span>
+          Allow logging time without a sprint
+          <span className="mt-1 block text-xs font-normal text-[var(--text-tertiary)]">
+            When off, every time entry must be assigned to a sprint.
+          </span>
+        </span>
+      </label>
 
       {message ? <p className="text-[13px] text-[var(--success-600)]">{message}</p> : null}
       {error ? (
