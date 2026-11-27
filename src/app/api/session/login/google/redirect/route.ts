@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { ACCESS_COOKIE, REFRESH_COOKIE, gatewayFetch } from "@/lib/session";
+import { googleErrorReason } from "@/lib/google-error";
 
 function origin(request: Request): string {
   const host = request.headers.get("host") ?? "localhost:3000";
@@ -30,7 +31,9 @@ export async function POST(request: Request) {
     body: JSON.stringify({ id_token: credential }),
   });
   if (!upstream.ok) {
-    return NextResponse.redirect(new URL("/login?google_error=failed", origin(request)));
+    const body = (await upstream.json().catch(() => ({}))) as { code?: string };
+    const reason = googleErrorReason(upstream.status, body.code);
+    return NextResponse.redirect(new URL(`/login?google_error=${reason}`, origin(request)));
   }
   const payload = (await upstream.json().catch(() => ({}))) as {
     data?: { access_token?: string; refresh_token?: string };

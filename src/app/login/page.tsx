@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { GoogleLogin } from "@/components/google-login";
+import { googleErrorMessage } from "@/lib/google-error";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("owner@acme-labs.com");
@@ -14,12 +15,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     const reason = new URLSearchParams(window.location.search).get("google_error");
-    if (!reason) return;
-    setError(
-      reason === "csrf"
-        ? "Google sign-in could not be verified. Please try again."
-        : "Google sign-in failed. Check the Google OAuth origin/redirect configuration.",
-    );
+    const message = googleErrorMessage(reason);
+    if (message) setError(message);
   }, []);
 
   async function onSubmit(event: React.FormEvent) {
