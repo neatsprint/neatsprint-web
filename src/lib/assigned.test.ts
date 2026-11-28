@@ -2,23 +2,44 @@ import { describe, expect, it } from "vitest";
 
 import { assignedItems } from "./assigned";
 
-const item = (id: string, assignee_id: string | null, status = "TODO") => ({
+const ACTIVE = "sprint-active";
+const CLOSED = "sprint-closed";
+
+const item = (
+  id: string,
+  assignee_id: string | null,
+  status = "TODO",
+  sprint_id: string | null = ACTIVE,
+) => ({
   id,
   key: `KEY-${id}`,
   title: `Item ${id}`,
   status,
   assignee_id,
+  sprint_id,
 });
+
+const active = new Set([ACTIVE]);
 
 describe("assignedItems", () => {
   it("keeps Done items because they are still assigned", () => {
     const rows = [item("1", "me", "DONE"), item("2", "me", "IN_PROGRESS")];
-    expect(assignedItems(rows, "me").map((row) => row.id).sort()).toEqual(["1", "2"]);
+    expect(assignedItems(rows, "me", active).map((row) => row.id).sort()).toEqual(["1", "2"]);
   });
 
   it("excludes items assigned to other people or nobody", () => {
     const rows = [item("1", "me"), item("2", "someone-else"), item("3", null)];
-    expect(assignedItems(rows, "me").map((row) => row.id)).toEqual(["1"]);
+    expect(assignedItems(rows, "me", active).map((row) => row.id)).toEqual(["1"]);
+  });
+
+  it("excludes items that are not in a sprint", () => {
+    const rows = [item("1", "me"), item("2", "me", "TODO", null)];
+    expect(assignedItems(rows, "me", active).map((row) => row.id)).toEqual(["1"]);
+  });
+
+  it("excludes items whose sprint is not active", () => {
+    const rows = [item("1", "me"), item("2", "me", "TODO", CLOSED)];
+    expect(assignedItems(rows, "me", active).map((row) => row.id)).toEqual(["1"]);
   });
 
   it("orders in progress, to do, review, blocked, then done", () => {
@@ -29,7 +50,7 @@ describe("assignedItems", () => {
       item("4", "me", "IN_PROGRESS"),
       item("5", "me", "BLOCKED"),
     ];
-    expect(assignedItems(rows, "me").map((row) => row.status)).toEqual([
+    expect(assignedItems(rows, "me", active).map((row) => row.status)).toEqual([
       "IN_PROGRESS",
       "TODO",
       "IN_REVIEW",
@@ -40,11 +61,11 @@ describe("assignedItems", () => {
 
   it("keeps backlog order within the same status", () => {
     const rows = [item("a", "me", "TODO"), item("b", "me", "TODO"), item("c", "me", "TODO")];
-    expect(assignedItems(rows, "me").map((row) => row.id)).toEqual(["a", "b", "c"]);
+    expect(assignedItems(rows, "me", active).map((row) => row.id)).toEqual(["a", "b", "c"]);
   });
 
   it("places unknown statuses last", () => {
     const rows = [item("1", "me", "SOMEDAY"), item("2", "me", "DONE")];
-    expect(assignedItems(rows, "me").map((row) => row.id)).toEqual(["2", "1"]);
+    expect(assignedItems(rows, "me", active).map((row) => row.id)).toEqual(["2", "1"]);
   });
 });

@@ -87,30 +87,27 @@ export default async function DashboardPage() {
       return payload.data.map((item) => ({ ...item, project_id: project.id }) as Item & { project_id: string });
     }),
   );
-  const assigned = assignedItems(backlogs.flat(), profile.id);
+  const sprintLists = await Promise.all(
+    projects.slice(0, 8).map(async (project) => {
+      const response = await gatewayFetch(`/tasks/sprints?project_id=${project.id}`, {}, token);
+      if (!response.ok) return [] as Sprint[];
+      return ((await response.json()) as { data: Sprint[] }).data;
+    }),
+  );
+  const activeSprints = sprintLists.flat().filter((sprint) => sprint.state === "ACTIVE");
+  const activeSprintIds = new Set(activeSprints.map((sprint) => sprint.id));
+  const assigned = assignedItems(backlogs.flat(), profile.id, activeSprintIds);
 
-  let activeSprint: Sprint | null = null;
+  const activeSprint: Sprint | null = activeSprints[0] ?? null;
   let sprintItems: Item[] = [];
-  for (const project of projects.slice(0, 4)) {
-    const response = await gatewayFetch(
-      `/tasks/sprints?project_id=${project.id}`,
+  if (activeSprint) {
+    const itemsResponse = await gatewayFetch(
+      `/tasks/sprints/${activeSprint.id}/items`,
       {},
       token,
     );
-    if (!response.ok) continue;
-    const sprints = ((await response.json()) as { data: Sprint[] }).data;
-    const active = sprints.find((sprint) => sprint.state === "ACTIVE");
-    if (active) {
-      activeSprint = active;
-      const itemsResponse = await gatewayFetch(
-        `/tasks/sprints/${active.id}/items`,
-        {},
-        token,
-      );
-      if (itemsResponse.ok) {
-        sprintItems = ((await itemsResponse.json()) as { data: Item[] }).data;
-      }
-      break;
+    if (itemsResponse.ok) {
+      sprintItems = ((await itemsResponse.json()) as { data: Item[] }).data;
     }
   }
 
