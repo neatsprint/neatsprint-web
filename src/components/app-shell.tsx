@@ -8,9 +8,9 @@ import {
   LayoutDashboard,
   type LucideIcon,
   LogIn,
-  LogOut,
   Settings,
   ShieldCheck,
+  Sparkles,
   Timer,
   Users,
 } from "lucide-react";
@@ -21,6 +21,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { NotificationBell } from "@/components/notification-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -103,13 +104,6 @@ type ShellProfile = {
   email: string;
   roles: string[];
 };
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0] ?? "";
-  const second = parts[1] ?? "";
-  return ((first[0] ?? "") + (second[0] ?? "")).toUpperCase() || "?";
-}
 
 function formatElapsed(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -219,30 +213,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ThemeToggle />
 
           {profile ? (
-            <>
-              <span className="hidden max-w-40 truncate text-[12px] text-[var(--text-secondary)] lg:inline">
-                {profile.full_name}
-              </span>
+            <div className="ml-auto flex items-center gap-2">
               <span
-                title={profile.email}
-                className="grid size-8 place-items-center rounded-full bg-[var(--primary-100)] text-[12px] font-semibold text-[var(--primary-700)]"
+                aria-disabled="true"
+                title="Neat AI is coming soon"
+                className="hidden cursor-not-allowed items-center gap-1.5 rounded-full border border-dashed px-3 py-1 text-[12px] text-[var(--text-tertiary)] sm:flex"
               >
-                {initials(profile.full_name)}
+                <Sparkles size={14} />
+                Neat AI
               </span>
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                aria-label="Sign out"
-                title="Sign out"
-                className="rounded-[var(--radius-md)] p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
-              >
-                <LogOut size={16} />
-              </button>
-            </>
+              <UserMenu
+                name={profile.full_name}
+                email={profile.email}
+                onSignOut={() => void signOut()}
+              />
+            </div>
           ) : loaded ? (
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
             >
               <LogIn size={15} />
               Sign in
