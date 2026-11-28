@@ -10,7 +10,9 @@ import {
 import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
+import { AssignedItems } from "@/components/assigned-items";
 import { Button } from "@/components/ui/button";
+import { assignedItems } from "@/lib/assigned";
 import { gatewayFetch, getAccessToken, getProfile } from "@/lib/session";
 import { formatDuration } from "@/lib/utils";
 
@@ -85,9 +87,7 @@ export default async function DashboardPage() {
       return payload.data.map((item) => ({ ...item, project_id: project.id }) as Item & { project_id: string });
     }),
   );
-  const assigned = backlogs
-    .flat()
-    .filter((item) => item.assignee_id === profile.id && item.status !== "DONE");
+  const assigned = assignedItems(backlogs.flat(), profile.id);
 
   let activeSprint: Sprint | null = null;
   let sprintItems: Item[] = [];
@@ -215,18 +215,10 @@ export default async function DashboardPage() {
             )}
           </div>
           <p className="mt-3 text-xs text-[var(--text-tertiary)]">
-            {formatDuration(sheet.total_seconds)} tracked today · {assigned.length} assigned items
+            {formatDuration(sheet.total_seconds)} tracked today · {assigned.length}{" "}
+            {assigned.length === 1 ? "assigned item" : "assigned items"}
           </p>
-          {assigned.length > 0 ? (
-            <ul className="mt-3 space-y-1 text-[12px]">
-              {assigned.slice(0, 3).map((item) => (
-                <li key={item.id} className="flex justify-between gap-2">
-                  <span className="mono text-[var(--text-tertiary)]">{item.key}</span>
-                  <span className="truncate">{item.title}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          {assigned.length > 0 ? <AssignedItems items={assigned} /> : null}
         </section>
 
         <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">
