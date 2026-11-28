@@ -215,7 +215,7 @@ export default async function DashboardPage() {
             {formatDuration(sheet.total_seconds)} tracked today · {assigned.length}{" "}
             {assigned.length === 1 ? "assigned item" : "assigned items"}
           </p>
-          {assigned.length > 0 ? <AssignedItems items={assigned} /> : null}
+          <AssignedItems items={assigned} />
         </section>
 
         <section className="rounded-[var(--radius-lg)] border bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-e1)]">

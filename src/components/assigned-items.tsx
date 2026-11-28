@@ -15,6 +15,13 @@ const DEFAULT_VISIBLE = 5;
 
 export function AssignedItems({ items }: { items: AssignedItem[] }) {
   const [expanded, setExpanded] = useState(false);
+
+  if (items.length === 0) {
+    return (
+      <p className="mt-3 text-[12px] text-[var(--text-tertiary)]">No active-sprint items.</p>
+    );
+  }
+
   const visible = expanded ? items : items.slice(0, DEFAULT_VISIBLE);
   const hidden = items.length - DEFAULT_VISIBLE;
 

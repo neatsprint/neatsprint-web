@@ -15,6 +15,12 @@ const rows = (count: number) =>
   }));
 
 describe("AssignedItems", () => {
+  it("shows a hint when nothing is in an active sprint", () => {
+    render(<AssignedItems items={[]} />);
+    expect(screen.getByText("No active-sprint items.")).toBeTruthy();
+    expect(screen.queryByRole("list")).toBeNull();
+  });
+
   it("shows every item when there are five or fewer", () => {
     render(<AssignedItems items={rows(2)} />);
     expect(screen.getByText("Task number 1")).toBeTruthy();
